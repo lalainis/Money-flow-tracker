@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="lv">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Biedrības Finansists</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/style.css?v=20260708" />
+    <link rel="manifest" href="/static/manifest.json" />
+    <meta name="theme-color" content="#2c3e50" />
+    <link rel="icon" type="image/png" href="/static/favicon.png" />
+    <link rel="apple-touch-icon" href="/static/favicon.png" />
+  </head>
+  <body>
+    <div id="app">
+      {% raw %}
+      <header class="topbar">
+        <h1 class="brand-title">
+          <span>Biedrības Finansists</span>
+        </h1>
+        <button v-if="token" @click="logout" class="ghost">Izrakstīties</button>
+      </header>
+
+      <main class="shell" v-if="!token">
+        <section class="card">
+          <h2>Ienākt sistēmā</h2>
+          <p class="muted">Telefona numurs ar 8 cipariem un 4 ciparu PIN kods.</p>
+
+          <label>Telefona numurs</label>
+          <input v-model="auth.phone" maxlength="8" placeholder="12345678" />
+
+          <button @click="checkPhone">Turpināt</button>
+
+          <div v-if="auth.step === 'setup'">
+            <label>Jaunais PIN</label>
+            <input type="password" v-model="auth.pin" maxlength="4" />
+
+            <label>PIN atkārtoti</label>
+            <input type="password" v-model="auth.pinConfirm" maxlength="4" />
+
+            <button @click="setupPin">Saglabāt PIN</button>
+          </div>
+
+          <div v-if="auth.step === 'login'">
+            <label>PIN kods</label>
+            <input type="password" v-model="auth.pin" maxlength="4" />
+            <button @click="login">Ielogoties</button>
+          </div>
+
+          <p class="error" v-if="errorMessage">{{ errorMessage }}</p>
+        </section>
+      </main>
+
+      <main class="shell" v-else>
+        <section class="dashboard card">
+          <div class="history-head">
+            <h2>Aktuālais stāvoklis</h2>
+            <div>
+              <label for="season-select">Sezona</label>
+              <select id="season-select" v-model="selectedSeason" @change="onSeasonChange">
+                <option v-for="p in availablePeriods" :key="p.season_label" :value="p.season_label">
+                  {{ p.season_label }}{{ p.active ? ' (aktīvā)' : '' }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <div class="stats">
+            <article>
+              <small>Ieņēmumi EUR</small>
+              <strong>{{ dashboard.totals.income_total.toFixed(2) }}</strong>
+            </article>
+            <article>
+              <small>Izdevumi EUR</small>
+              <strong>{{ dashboard.totals.expense_total.toFixed(2) }}</strong>
+            </article>
+            <article>
+              <small>Atlikums / Deficīts</small>
+              <strong :class="dashboard.totals.difference >= 0 ? 'ok' : 'warn'">
+                {{ dashboard.totals.difference.toFixed(2) }}
+              </strong>
+            </article>
+          </div>
+          <p class="muted">
+            Periods: {{ dashboard.period.season_label }} ({{ dashboard.period.start_date }} - {{
+            dashboard.period.end_date }})
+          </p>
+        </section>
+
+        <nav class="tabs card">
+          <button v-if="canWriteIncome" @click="tab='income'" :class="{active: tab==='income'}">Ieņēmumi</button>
+          <button v-if="canWriteExpense" @click="tab='expense'" :class="{active: tab==='expense'}">Izdevumi</button>
+          <button class="outline-tab" @click="tab='history'" :class="{active: tab==='history'}">Vēsture</button>
+          <button class="outline-tab" @click="tab='member-list'" :class="{active: tab==='member-list'}">
+            Biedru saraksts
+          </button>
+          <button
+            v-if="canViewAuditLogs"
+            class="outline-tab"
+            @click="tab='audit-log'"
+            :class="{active: tab==='audit-log'}"
+          >
+            Labojumu žurnāls
+          </button>
+          <span class="tabs-spacer"></span>
+          <button v-if="canManageMembers" class="outline-tab" @click="tab='members'" :class="{active: tab==='members'}">
+            Biedri
+          </button>
+          <button v-if="canManagePeriod" class="outline-tab" @click="tab='period'" :class="{active: tab==='period'}">
+            Periods
+          </button>
+        </nav>
+
+        <section class="card" v-if="tab==='member-list'">
+          <h3>Biedru saraksts</h3>
+          <p class="muted">Iemaksas pārskata periodā: {{ dashboard.period.season_label }}</p>
+          <div class="table-wrap">
+            <table class="responsive-cards members-list-table">
+              <thead>
+                <tr>
+                  <th>Nr</th>
+                  <th>Vārds</th>
+                  <th>Uzvārds</th>
+                  <th>Telefons</th>
+                  <th>Iestāšanās maksa</th>
+                  <th class="amount-col">Jāmaksā periodā (EUR)</th>
+                  <th class="amount-col">Iemaksāts periodā (EUR)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="m in members" :key="m.id" :class="{ 'paid-member-row': isMemberFullyPaid(m) }">
+                  <td>{{ m.list_no }}</td>
+                  <td>{{ m.first_name }}</td>
+                  <td>{{ m.last_name }}</td>
+                  <td>{{ m.phone }}</td>
+                  <td>{{ m.joining_fee_paid ? 'Jā' : 'Nē' }}</td>
+                  <td class="amount-col">{{ m.membership_fee.toFixed(2) }}</td>
+                  <td class="amount-col">{{ m.paid_this_period.toFixed(2) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card" v-if="tab==='income' && canWriteIncome">
+          <h3>Citi ieņēmumi</h3>
+          <label>Summa EUR</label>
+          <input v-model="forms.otherIncome.amount" type="number" step="0.01" />
+          <label>Datums</label>
+          <input v-model="forms.otherIncome.entry_date" type="date" />
+          <label>Apraksts</label>
+          <input v-model="forms.otherIncome.description" />
+          <button @click="addOtherIncome">Pievienot ieņēmumu</button>
+
+          <hr />
+          <h3>Biedra naudas iemaksa</h3>
+          <label>Biedrs</label>
+          <select v-model="forms.memberPayment.member_id">
+            <option disabled value="">Izvēlies biedru</option>
+            <option v-for="m in members" :value="m.id">
+              {{ m.list_no }}. {{ m.first_name }} {{ m.last_name }} ({{ m.paid_this_period.toFixed(2) }}/{{
+              m.membership_fee.toFixed(2) }})
+            </option>
+          </select>
+          <label>Summa EUR</label>
+          <input v-model="forms.memberPayment.amount" type="number" step="0.01" />
+          <label>Datums</label>
+          <input v-model="forms.memberPayment.entry_date" type="date" />
+          <button @click="addMemberPayment">Pievienot iemaksu</button>
+        </section>
+
+        <section class="card" v-if="tab==='expense' && canWriteExpense">
+          <h3>Pievienot izdevumus</h3>
+          <label>Kategorija</label>
+          <select v-model="forms.expense.category">
+            <option disabled value="">Izvēlies kategoriju</option>
+            <option v-for="c in config.expense_categories" :value="c">{{ c }}</option>
+          </select>
+          <label>Summa EUR</label>
+          <input v-model="forms.expense.amount" type="number" step="0.01" />
+          <label>Datums</label>
+          <input v-model="forms.expense.entry_date" type="date" />
+          <label>Apraksts</label>
+          <input v-model="forms.expense.description" />
+          <label>Pievienot fails (neobligāti)</label>
+          <input type="file" @change="onFileChange" />
+          <button @click="addExpense">Saglabāt izdevumus</button>
+        </section>
+
+        <section class="card history-card" v-if="tab==='history'">
+          <button class="excel-export-btn" @click="exportBalance" title="Eksportēt bilanci uz Excel">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linejoin="round"
+              />
+              <path d="M14 2v5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+              <path
+                d="M9.2 10.2 12.8 15.8M12.8 10.2 9.2 15.8"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+              />
+            </svg>
+            <span>Eksportēt</span>
+          </button>
+          <h3 class="history-title">Pārskata perioda vēsture</h3>
+
+          <div class="history-filters">
+            <div class="filter-group">
+              <label>Mēnesis</label>
+              <select v-model="historyFilter.month">
+                <option value="">Visi</option>
+                <option v-for="m in historyMonths" :key="m" :value="m">{{ m }}</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Ieņēmumu tips</label>
+              <select v-model="historyFilter.incomeType">
+                <option value="">Visi</option>
+                <option v-for="t in historyIncomeTypes" :key="t" :value="t">{{ t }}</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Izdevumu kategorija</label>
+              <select v-model="historyFilter.expenseCategory">
+                <option value="">Visas</option>
+                <option v-for="c in historyExpenseCategories" :key="c" :value="c">{{ c }}</option>
+              </select>
+            </div>
+            <button class="ghost" @click="historyFilter = { month: '', incomeType: '', expenseCategory: '' }">
+              Notīrīt filtrus
+            </button>
+          </div>
+
+          <h4 class="collapsible-heading" @click="historyCollapsed.incomes = !historyCollapsed.incomes">
+            <svg
+              class="collapse-icon"
+              :class="{ rotated: historyCollapsed.incomes }"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+            Ieņēmumi
+            <span class="filter-count" v-if="filteredIncomes.length !== history.incomes.length"
+              >({{ filteredIncomes.length }} / {{ history.incomes.length }})</span
+            >
+          </h4>
+          <div class="table-wrap" v-show="!historyCollapsed.incomes">
+            <table class="responsive-cards history-income-table">
+              <thead>
+                <tr>
+                  <th>Datums</th>
+                  <th>Tips</th>
+                  <th>Biedrs</th>
+                  <th class="amount-col">Summa</th>
+                  <th>Apraksts</th>
+                  <th v-if="canEditEntries">Darbības</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="i in filteredIncomes">
+                  <td>
+                    <input
+                      v-if="canEditEntries && editIncome.id === i.id"
+                      v-model="editIncome.entry_date"
+                      type="date"
+                    />
+                    <span v-else>{{ i.entry_date }}</span>
+                  </td>
+                  <td>{{ i.type }}</td>
+                  <td>{{ i.member_name }}</td>
+                  <td class="amount-col">
+                    <input
+                      v-if="canEditEntries && editIncome.id === i.id"
+                      v-model.number="editIncome.amount"
+                      type="number"
+                      step="0.01"
+                    />
+                    <span v-else>{{ i.amount.toFixed(2) }}</span>
+                  </td>
+                  <td>
+                    <input v-if="canEditEntries && editIncome.id === i.id" v-model="editIncome.description" />
+                    <span v-else>{{ i.description }}</span>
+                  </td>
+                  <td v-if="canEditEntries">
+                    <div class="action-buttons" v-if="editIncome.id === i.id">
+                      <button class="icon-btn" @click="saveIncomeEdit">Saglabāt</button>
+                      <button class="ghost icon-btn" @click="cancelIncomeEdit">Atcelt</button>
+                    </div>
+                    <div class="action-buttons" v-else>
+                      <button class="ghost icon-btn" @click="startIncomeEdit(i)">Labot</button>
+                      <button class="danger icon-btn" @click="removeIncome(i)">Dzēst</button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4 class="collapsible-heading" @click="historyCollapsed.expenses = !historyCollapsed.expenses">
+            <svg
+              class="collapse-icon"
+              :class="{ rotated: historyCollapsed.expenses }"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+            Izdevumi
+            <span class="filter-count" v-if="filteredExpenses.length !== history.expenses.length"
+              >({{ filteredExpenses.length }} / {{ history.expenses.length }})</span
+            >
+          </h4>
+          <div class="table-wrap" v-show="!historyCollapsed.expenses">
+            <table class="responsive-cards history-expense-table">
+              <thead>
+                <tr>
+                  <th>Datums</th>
+                  <th>Kategorija</th>
+                  <th class="amount-col">Summa</th>
+                  <th>Apraksts</th>
+                  <th>Fails</th>
+                  <th v-if="canEditEntries">Darbības</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="e in filteredExpenses">
+                  <td>
+                    <input
+                      v-if="canEditEntries && editExpense.id === e.id"
+                      v-model="editExpense.entry_date"
+                      type="date"
+                    />
+                    <span v-else>{{ e.entry_date }}</span>
+                  </td>
+                  <td>
+                    <select v-if="canEditEntries && editExpense.id === e.id" v-model="editExpense.category">
+                      <option v-for="c in config.expense_categories" :value="c">{{ c }}</option>
+                    </select>
+                    <span v-else>{{ e.category }}</span>
+                  </td>
+                  <td class="amount-col">
+                    <input
+                      v-if="canEditEntries && editExpense.id === e.id"
+                      v-model.number="editExpense.amount"
+                      type="number"
+                      step="0.01"
+                    />
+                    <span v-else>{{ e.amount.toFixed(2) }}</span>
+                  </td>
+                  <td>
+                    <input v-if="canEditEntries && editExpense.id === e.id" v-model="editExpense.description" />
+                    <span v-else>{{ e.description }}</span>
+                  </td>
+                  <td>
+                    <a v-if="e.attachment" href="#" @click.prevent="openAttachment(e.attachment)">Atvert</a>
+                  </td>
+                  <td v-if="canEditEntries">
+                    <div class="action-buttons" v-if="editExpense.id === e.id">
+                      <button class="icon-btn" @click="saveExpenseEdit">Saglabāt</button>
+                      <button class="ghost icon-btn" @click="cancelExpenseEdit">Atcelt</button>
+                    </div>
+                    <div class="action-buttons" v-else>
+                      <button class="ghost icon-btn" @click="startExpenseEdit(e)">Labot</button>
+                      <button class="danger icon-btn" @click="removeExpense(e)">Dzēst</button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card" v-if="tab==='audit-log' && canViewAuditLogs">
+          <h3>Labojumu žurnāls</h3>
+          <p class="muted">Parāda izmaiņas izvēlētajā sezonā: kas, kad un ko mainīja vai dzēsa.</p>
+          <div class="table-wrap">
+            <table class="responsive-cards">
+              <thead>
+                <tr>
+                  <th>Laiks</th>
+                  <th>Darbība</th>
+                  <th>Ieraksts</th>
+                  <th>Lietotājs</th>
+                  <th>Vecā vērtība</th>
+                  <th>Jaunā vērtība</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="log in auditLogs" :key="log.id">
+                  <td>{{ log.changed_at.replace('T', ' ').slice(0, 19) }}</td>
+                  <td>{{ log.action === 'update' ? 'Labots' : 'Dzēsts' }}</td>
+                  <td>{{ log.entity_type === 'income' ? 'Ieņēmums' : 'Izdevums' }} #{{ log.entity_id }}</td>
+                  <td>{{ log.changed_by }}</td>
+                  <td><pre>{{ log.old_data ? JSON.stringify(log.old_data) : '' }}</pre></td>
+                  <td><pre>{{ log.new_data ? JSON.stringify(log.new_data) : '' }}</pre></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card" v-if="tab==='members' && canManageMembers">
+          <h3>Biedrības biedri</h3>
+          <div class="table-wrap">
+            <table class="responsive-cards manage-members-table">
+              <thead>
+                <tr>
+                  <th>Nr</th>
+                  <th>Vārds</th>
+                  <th>Uzvārds</th>
+                  <th>Telefons</th>
+                  <th>Statuss</th>
+                  <th>Loma</th>
+                  <th class="amount-col">Maksa</th>
+                  <th>Iestāšanās maksa</th>
+                  <th>Darbības</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="m in members" :key="m.id">
+                  <td>{{ m.list_no }}</td>
+                  <td><input v-model="m.first_name" /></td>
+                  <td><input v-model="m.last_name" /></td>
+                  <td><input v-model="m.phone" maxlength="8" /></td>
+                  <td>
+                    <select v-model="m.status">
+                      <option v-for="status in statusOptions" :key="status" :value="status">{{ status }}</option>
+                    </select>
+                  </td>
+                  <td>
+                    <select v-model="m.role" :disabled="user.role !== 'admin'">
+                      <option v-for="role in roleOptions" :key="role.value" :value="role.value">
+                        {{ role.label }}
+                      </option>
+                    </select>
+                  </td>
+                  <td class="amount-col"><input v-model.number="m.membership_fee" type="number" step="0.01" /></td>
+                  <td><input v-model="m.joining_fee_paid" type="checkbox" /></td>
+                  <td>
+                    <div class="action-buttons">
+                      <button @click="saveMember(m)" title="Saglabāt" class="icon-btn">
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                          <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                          <polyline points="7 3 7 8 15 8"></polyline>
+                        </svg>
+                      </button>
+                      <button
+                        v-if="user.role === 'admin'"
+                        class="ghost icon-btn"
+                        :disabled="!m.has_pin"
+                        @click="clearMemberPin(m.id)"
+                        title="Dzēst PIN"
+                      >
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <circle cx="12" cy="12" r="1"></circle>
+                          <path
+                            d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m4.24-4.24l4.24-4.24"
+                          ></path>
+                        </svg>
+                      </button>
+                      <button class="danger icon-btn" @click="removeMember(m.id)" title="Dzēst">
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path
+                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                          ></path>
+                          <line x1="10" y1="11" x2="10" y2="17"></line>
+                          <line x1="14" y1="11" x2="14" y2="17"></line>
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4>Pievienot biedru</h4>
+          <div class="inline-grid">
+            <input v-model="forms.member.first_name" placeholder="Vārds" />
+            <input v-model="forms.member.last_name" placeholder="Uzvārds" />
+            <input v-model="forms.member.phone" maxlength="8" placeholder="Telefons" />
+            <select v-model="forms.member.status">
+              <option v-for="status in statusOptions" :key="status" :value="status">{{ status }}</option>
+            </select>
+            <input v-model.number="forms.member.membership_fee" type="number" step="0.01" placeholder="Biedra maksa" />
+            <label><input v-model="forms.member.joining_fee_paid" type="checkbox" /> Jāsamaksā iestāšanās maksa</label>
+            <select v-model="forms.member.role" :disabled="user.role !== 'admin'">
+              <option v-for="role in roleOptions" :key="role.value" :value="role.value">{{ role.label }}</option>
+            </select>
+          </div>
+          <button @click="addMember">Pievienot biedru</button>
+        </section>
+
+        <section class="card" v-if="tab==='period' && canManagePeriod">
+          <h3>Pārskata periods</h3>
+          <label>Sezona (yyyy/yyyy)</label>
+          <input v-model="forms.period.season_label" placeholder="2026/2027" />
+          <label>Biedra maksa sezonā (pēc izvēles)</label>
+          <input v-model="forms.period.default_membership_fee" type="number" step="0.01" />
+          <label>Atlikums no iepriekšējā perioda EUR (var būt negatīvs)</label>
+          <input v-model="forms.period.carry_over" type="number" step="0.01" />
+          <button @click="setPeriod">Saglabāt sezonu, biedra naudu un atlikumu</button>
+        </section>
+
+        <p class="message" v-if="successMessage">{{ successMessage }}</p>
+        <p class="error" v-if="errorMessage">{{ errorMessage }}</p>
+      </main>
+      {% endraw %}
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="/static/app.js?v=20260708"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", async () => {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map((registration) => registration.unregister()));
+          if (window.caches) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map((key) => caches.delete(key)));
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
+
+<footer style="margin-top: 50px; padding: 20px 0; text-align: center; color: #0a2d4b; font-size: 13px">
+  <p>Biedrības Finansists &copy; 2026. Sistēmu izstrādāja <strong>Lauris & MI</strong></p>
+</footer>

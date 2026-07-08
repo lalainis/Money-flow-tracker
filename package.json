@@ -1,0 +1,14 @@
+{
+  "name": "biedribas-finansists-frontend-quality",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "lint:frontend": "eslint static/app.js",
+    "format:frontend:check": "prettier --check \"static/**/*.{js,css,html}\" \"templates/**/*.html\"",
+    "format:frontend": "prettier --write \"static/**/*.{js,css,html}\" \"templates/**/*.html\""
+  },
+  "devDependencies": {
+    "eslint": "8.57.0",
+    "prettier": "3.3.3"
+  }
+}

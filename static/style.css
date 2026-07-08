@@ -1,0 +1,564 @@
+:root {
+  --bg: linear-gradient(160deg, #f4f9f6 0%, #e7f4ff 45%, #fff8ee 100%);
+  --card: rgba(255, 255, 255, 0.88);
+  --text: #041827;
+  --muted: #42647a;
+  --line: rgba(23, 48, 66, 0.14);
+  --brand: #06a175;
+  --accent: #ea580c;
+  --danger: #b30e0e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Manrope", "Segoe UI", sans-serif;
+  color: var(--text);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.5)),
+    url("/static/attēls fonam.jpg");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+#app {
+  width: min(1150px, 94vw);
+  margin: 0 auto;
+  padding: 26px 0 32px;
+  position: relative;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.brand-title {
+  margin: 0;
+  letter-spacing: 0.02em;
+  font-size: clamp(1.35rem, 2.4vw, 2rem);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.title-logo {
+  width: clamp(42px, 5vw, 64px);
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 4px 10px rgba(23, 48, 66, 0.2));
+}
+
+.shell {
+  display: grid;
+  gap: 14px;
+}
+
+.card {
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 18px;
+  padding: 16px;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 16px 40px rgba(23, 48, 66, 0.09);
+}
+
+label {
+  display: block;
+  margin: 8px 0 6px;
+  font-weight: 700;
+}
+
+input,
+select,
+button {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  font: inherit;
+}
+
+button {
+  margin-top: 8px;
+  font-weight: 700;
+  background: linear-gradient(110deg, var(--brand), #0f766e);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition:
+    transform 0.14s ease,
+    filter 0.18s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+button.ghost {
+  width: auto;
+  margin: 0;
+  background: transparent;
+  color: var(--text);
+  border: 2px solid var(--brand);
+}
+
+button.danger {
+  background: var(--danger);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.action-buttons button {
+  flex: 1;
+  min-width: 50px;
+  padding: 6px 8px;
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-buttons button svg {
+  display: block;
+  color: currentColor;
+}
+
+.action-buttons button.ghost {
+  background: rgba(23, 48, 66, 0.05);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.stats article {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px;
+  background: white;
+}
+
+.stats small {
+  display: block;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.stats strong {
+  font-size: 1.25rem;
+}
+
+.ok {
+  color: var(--brand);
+}
+
+.warn {
+  color: var(--accent);
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tabs-spacer {
+  flex: 1;
+}
+
+.tabs button {
+  width: auto;
+  margin: 0;
+  background: #dbe6ef;
+  color: var(--text);
+}
+
+.tabs button.active {
+  background: var(--brand);
+  color: #fff;
+}
+
+.tabs button.outline-tab {
+  background: transparent;
+  color: var(--brand);
+  border: 2px solid var(--brand);
+}
+
+.tabs button.outline-tab:hover {
+  filter: none;
+  background: rgba(4, 120, 87, 0.08);
+}
+
+.tabs button.outline-tab.active {
+  background: rgba(4, 120, 87, 0.14);
+  color: var(--brand);
+  border-color: var(--brand);
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--line);
+  padding: 9px;
+  text-align: left;
+  vertical-align: top;
+}
+
+th.amount-col,
+td.amount-col {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.paid-member-row td {
+  background: rgba(22, 163, 74, 0.12);
+  color: #14532d;
+  font-weight: 600;
+}
+
+td.amount-col input[type="number"] {
+  text-align: right;
+}
+
+.inline-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.history-card {
+  position: relative;
+}
+
+.history-title {
+  margin-top: 0;
+  margin-right: 150px;
+}
+
+.history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: rgba(4, 120, 87, 0.04);
+  border: 1px solid rgba(4, 120, 87, 0.12);
+  border-radius: 12px;
+}
+
+.history-filters .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 140px;
+}
+
+.history-filters .filter-group label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.history-filters select {
+  margin: 0;
+}
+
+.history-filters button.ghost {
+  align-self: flex-end;
+  padding: 8px 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.filter-count {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.collapsible-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.collapsible-heading:hover {
+  color: var(--brand);
+}
+
+.collapse-icon {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.collapse-icon.rotated {
+  transform: rotate(-90deg);
+}
+
+.excel-export-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: auto;
+  margin: 0;
+  padding: 7px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 10px;
+  border: 1px solid rgba(4, 120, 87, 0.35);
+  background: rgba(4, 120, 87, 0.08);
+  color: var(--brand);
+  font-size: 0.9rem;
+  font-weight: 700;
+  z-index: 2;
+}
+
+.excel-export-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.excel-export-btn:hover {
+  transform: translateY(-1px);
+  filter: none;
+  background: rgba(10, 218, 159, 0.14);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.message {
+  color: var(--brand);
+  font-weight: 700;
+}
+
+.error {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 18px 0;
+}
+
+@media (max-width: 640px) {
+  #app {
+    width: 96vw;
+    padding-top: 14px;
+  }
+
+  .brand-title {
+    gap: 8px;
+    font-size: clamp(1.15rem, 6vw, 1.45rem);
+  }
+
+  .title-logo {
+    width: clamp(34px, 11vw, 44px);
+  }
+
+  .card {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .history-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .history-title {
+    margin-right: 0;
+    padding-top: 46px;
+  }
+
+  .excel-export-btn {
+    top: 10px;
+    right: 10px;
+    padding: 6px 9px;
+    font-size: 0.82rem;
+  }
+
+  .table-wrap {
+    border: 0;
+    overflow: visible;
+  }
+
+  table.responsive-cards {
+    min-width: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  table.responsive-cards thead {
+    display: none;
+  }
+
+  table.responsive-cards tbody,
+  table.responsive-cards tr,
+  table.responsive-cards td {
+    display: block;
+    width: 100%;
+  }
+
+  table.responsive-cards tr {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 6px 8px;
+    margin-bottom: 10px;
+  }
+
+  table.responsive-cards td {
+    border-bottom: 1px dashed rgba(23, 48, 66, 0.14);
+    padding: 7px 8px;
+    text-align: left;
+  }
+
+  table.responsive-cards td:last-child {
+    border-bottom: 0;
+  }
+
+  table.responsive-cards td::before {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 0.74rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  table.responsive-cards td.amount-col {
+    text-align: left;
+  }
+
+  table.responsive-cards td.amount-col input[type="number"] {
+    text-align: left;
+  }
+
+  .members-list-table td:nth-child(1)::before {
+    content: "Nr";
+  }
+  .members-list-table td:nth-child(2)::before {
+    content: "Vārds";
+  }
+  .members-list-table td:nth-child(3)::before {
+    content: "Uzvārds";
+  }
+  .members-list-table td:nth-child(4)::before {
+    content: "Telefons";
+  }
+  .members-list-table td:nth-child(5)::before {
+    content: "Iestāšanās maksa";
+  }
+  .members-list-table td:nth-child(6)::before {
+    content: "Jāmaksā periodā";
+  }
+  .members-list-table td:nth-child(7)::before {
+    content: "Iemaksāts periodā";
+  }
+
+  .history-income-table td:nth-child(1)::before {
+    content: "Datums";
+  }
+  .history-income-table td:nth-child(2)::before {
+    content: "Tips";
+  }
+  .history-income-table td:nth-child(3)::before {
+    content: "Biedrs";
+  }
+  .history-income-table td:nth-child(4)::before {
+    content: "Summa";
+  }
+  .history-income-table td:nth-child(5)::before {
+    content: "Apraksts";
+  }
+
+  .history-expense-table td:nth-child(1)::before {
+    content: "Datums";
+  }
+  .history-expense-table td:nth-child(2)::before {
+    content: "Kategorija";
+  }
+  .history-expense-table td:nth-child(3)::before {
+    content: "Summa";
+  }
+  .history-expense-table td:nth-child(4)::before {
+    content: "Apraksts";
+  }
+  .history-expense-table td:nth-child(5)::before {
+    content: "Fails";
+  }
+
+  .manage-members-table td:nth-child(1)::before {
+    content: "Nr";
+  }
+  .manage-members-table td:nth-child(2)::before {
+    content: "Vārds";
+  }
+  .manage-members-table td:nth-child(3)::before {
+    content: "Uzvārds";
+  }
+  .manage-members-table td:nth-child(4)::before {
+    content: "Telefons";
+  }
+  .manage-members-table td:nth-child(5)::before {
+    content: "Statuss";
+  }
+  .manage-members-table td:nth-child(6)::before {
+    content: "Loma";
+  }
+  .manage-members-table td:nth-child(7)::before {
+    content: "Maksa";
+  }
+  .manage-members-table td:nth-child(8)::before {
+    content: "Iestāšanās maksa";
+  }
+  .manage-members-table td:nth-child(9)::before {
+    content: "Darbības";
+  }
+}
