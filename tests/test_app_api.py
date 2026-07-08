@@ -571,7 +571,11 @@ def test_login_sets_cookie_and_cookie_auth_works(client):
 
 
 def test_auth_init_rate_limit_per_phone(client):
-    for _ in range(10):
+    import settings
+
+    limit_count = int(str(settings.AUTH_INIT_RATE_PHONE).split(" ", 1)[0])
+
+    for _ in range(limit_count):
         response = client.post("/api/auth/init", json={"phone": "29123456"})
         assert response.status_code == 200
 
