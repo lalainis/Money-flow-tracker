@@ -1,4 +1,5 @@
 import io
+import sys
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
@@ -571,9 +572,10 @@ def test_login_sets_cookie_and_cookie_auth_works(client):
 
 
 def test_auth_init_rate_limit_per_phone(client):
-    import settings
-
-    limit_count = int(str(settings.AUTH_INIT_RATE_PHONE).split(" ", 1)[0])
+    limit_value = str(sys.modules["settings"].AUTH_INIT_RATE_PHONE).strip()
+    limit_count_token = limit_value.split(" ", 1)[0]
+    assert limit_count_token.isdigit(), f"Unexpected AUTH_INIT_RATE_PHONE format: {limit_value}"
+    limit_count = int(limit_count_token)
 
     for _ in range(limit_count):
         response = client.post("/api/auth/init", json={"phone": "29123456"})
