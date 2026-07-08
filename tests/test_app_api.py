@@ -3,6 +3,7 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 
 from openpyxl import load_workbook
+import pytest
 
 import settings
 
@@ -23,6 +24,24 @@ def create_member(client, token, **overrides):
     }
     payload.update(overrides)
     return client.post("/api/members", json=payload, headers=auth_headers(token))
+
+
+def parse_rate_limit_count(rate_limit_value):
+    if isinstance(rate_limit_value, int):
+        return rate_limit_value
+
+    token = str(rate_limit_value).strip().split(" ", 1)[0]
+    if token.isdigit():
+        return int(token)
+
+    raise AssertionError(f"Unexpected rate limit format: {rate_limit_value}")
+
+
+def test_parse_rate_limit_count_handles_supported_formats():
+    assert parse_rate_limit_count("10 per minute") == 10
+    assert parse_rate_limit_count(7) == 7
+    with pytest.raises(AssertionError):
+        parse_rate_limit_count("per minute")
 
 
 def test_auth_init_rejects_invalid_phone(client):
@@ -573,8 +592,7 @@ def test_login_sets_cookie_and_cookie_auth_works(client):
 
 
 def test_auth_init_rate_limit_per_phone(client):
-    # AUTH_INIT_RATE_PHONE is a Flask-Limiter rate string (for example, "10 per minute").
-    limit_count = int(str(settings.AUTH_INIT_RATE_PHONE).split(" ", 1)[0])
+    limit_count = parse_rate_limit_count(settings.AUTH_INIT_RATE_PHONE)
 
     for _ in range(limit_count):
         response = client.post("/api/auth/init", json={"phone": "29123456"})
