@@ -20,10 +20,10 @@
         <h1 class="brand-title">
           <span>Association Finance Tracker</span>
         </h1>
-        <button v-if="token" @click="logout" class="ghost">Log out</button>
+        <button v-if="user" @click="logout" class="ghost">Log out</button>
       </header>
 
-      <main class="shell" v-if="!token">
+      <main class="shell" v-if="!user">
         <section class="card">
           <h2>Sign in</h2>
           <p class="muted">Use an 8-digit phone number and a 4-digit PIN.</p>
