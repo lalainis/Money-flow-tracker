@@ -24,8 +24,7 @@ body {
   margin: 0;
   font-family: "Space Grotesk", "Segoe UI", sans-serif;
   color: var(--text);
-  background:
-    radial-gradient(1100px 700px at 10% -10%, #ffd7b3 0%, rgba(255, 215, 179, 0) 70%),
+  background: radial-gradient(1100px 700px at 10% -10%, #ffd7b3 0%, rgba(255, 215, 179, 0) 70%),
     radial-gradient(900px 600px at 100% 0%, #c9ebff 0%, rgba(201, 235, 255, 0) 68%),
     linear-gradient(170deg, var(--bg-top) 0%, var(--bg-mid) 48%, var(--bg-bottom) 100%);
   min-height: 100vh;
@@ -155,7 +154,9 @@ input,
 select {
   background: rgba(255, 255, 255, 0.95);
   color: var(--text);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 input:focus,
@@ -173,7 +174,10 @@ button {
   cursor: pointer;
   background: linear-gradient(112deg, var(--brand) 0%, #0284c7 52%, #0ea5a4 100%);
   box-shadow: var(--shadow-hard);
-  transition: transform 0.16s ease, filter 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.16s ease,
+    filter 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 button:hover {

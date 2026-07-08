@@ -3,9 +3,9 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "lint:frontend": "eslint static/app.js",
-    "format:frontend:check": "prettier --check \"static/**/*.{js,css,html}\" \"templates/**/*.html\"",
-    "format:frontend": "prettier --write \"static/**/*.{js,css,html}\" \"templates/**/*.html\""
+    "lint:frontend": "node node_modules/eslint/bin/eslint.js static/app.js",
+    "format:frontend:check": "node node_modules/prettier/bin/prettier.cjs --check \"static/**/*.{js,css,html}\" \"templates/**/*.html\"",
+    "format:frontend": "node node_modules/prettier/bin/prettier.cjs --write \"static/**/*.{js,css,html}\" \"templates/**/*.html\""
   },
   "devDependencies": {
     "eslint": "8.57.0",

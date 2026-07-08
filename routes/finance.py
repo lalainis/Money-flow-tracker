@@ -439,7 +439,9 @@ def export_balance():
     for m in all_members:
         fee = float(fee_rows_map.get(m.id, m.membership_fee))
         paid = float(paid_rows_map.get(m.id, 0))
-        ws_members.append([m.list_no, m.first_name, m.last_name, m.status, fee, paid, "Yes" if m.joining_fee_paid else "No"])
+        ws_members.append(
+            [m.list_no, m.first_name, m.last_name, m.status, fee, paid, "Yes" if m.joining_fee_paid else "No"]
+        )
 
     ws_audit = wb.create_sheet("Audit log")
     ws_audit.append(["Time", "Action", "Record type", "Record ID", "User", "Old value", "New value"])
