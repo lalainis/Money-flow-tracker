@@ -33,7 +33,7 @@ createApp({
           first_name: "",
           last_name: "",
           phone: "",
-          status: "Biedrs",
+          status: "Member",
           membership_fee: 0,
           joining_fee_paid: false,
           role: "member",
@@ -70,11 +70,11 @@ createApp({
     },
     roleOptions() {
       return [
-        { value: "member", label: "Biedrs" },
-        { value: "cashier", label: "Kasieris" },
-        { value: "board", label: "Valde" },
-        { value: "auditor", label: "Revidents" },
-        { value: "admin", label: "Administrators" },
+        { value: "member", label: "Member" },
+        { value: "cashier", label: "Cashier" },
+        { value: "board", label: "Board" },
+        { value: "auditor", label: "Auditor" },
+        { value: "admin", label: "Administrator" },
       ];
     },
     statusOptions() {
@@ -162,7 +162,7 @@ createApp({
         const fallbackMessage = rawText
           ? `HTTP ${response.status}: ${rawText.slice(0, 200)}`
           : `HTTP ${response.status}`;
-        const error = new Error(data?.error || fallbackMessage || "Neizdevas izpildit pieprasijumu");
+        const error = new Error(data?.error || fallbackMessage || "Request failed");
         error.status = response.status;
         throw error;
       }
@@ -212,7 +212,7 @@ createApp({
             pin_confirm: this.auth.pinConfirm,
           }),
         });
-        this.successMessage = "PIN kods saglabats. Tagad ielogojieties.";
+        this.successMessage = "PIN saved. Please sign in.";
         this.auth.step = "login";
         this.auth.pin = "";
         this.auth.pinConfirm = "";
@@ -309,7 +309,7 @@ createApp({
     async addOtherIncome() {
       this.resetMessages();
       if (this.isAmountMissing(this.forms.otherIncome.amount)) {
-        this.errorMessage = "Lūdzu ievadi summu.";
+        this.errorMessage = "Please enter an amount.";
         return;
       }
       try {
@@ -318,7 +318,7 @@ createApp({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(this.forms.otherIncome),
         });
-        this.successMessage = "Ieņēmums pievienots";
+        this.successMessage = "Income added";
         this.forms.otherIncome.amount = "";
         this.forms.otherIncome.description = "";
         await this.refreshAll();
@@ -329,7 +329,7 @@ createApp({
     async addMemberPayment() {
       this.resetMessages();
       if (this.isAmountMissing(this.forms.memberPayment.amount)) {
-        this.errorMessage = "Lūdzu ievadi summu.";
+        this.errorMessage = "Please enter an amount.";
         return;
       }
       try {
@@ -342,7 +342,7 @@ createApp({
             entry_date: this.forms.memberPayment.entry_date,
           }),
         });
-        this.successMessage = "Biedra iemaksa pievienota";
+        this.successMessage = "Member payment added";
         this.forms.memberPayment.amount = "";
         await this.refreshAll();
       } catch (err) {
@@ -355,7 +355,7 @@ createApp({
     async addExpense() {
       this.resetMessages();
       if (this.isAmountMissing(this.forms.expense.amount)) {
-        this.errorMessage = "Lūdzu ievadi summu.";
+        this.errorMessage = "Please enter an amount.";
         return;
       }
       try {
@@ -365,7 +365,7 @@ createApp({
           fd.append("attachment", this.selectedFile);
         }
         await this.api("/api/expenses", { method: "POST", body: fd });
-        this.successMessage = "Izdevumi pievienoti";
+        this.successMessage = "Expense added";
         this.forms.expense.amount = "";
         this.forms.expense.description = "";
         this.selectedFile = null;
@@ -389,7 +389,7 @@ createApp({
         });
 
         if (!response.ok) {
-          let message = "Neizdevās atvērt pielikumu";
+          let message = "Failed to open attachment";
           try {
             const data = await response.json();
             message = data.error || message;
@@ -428,12 +428,12 @@ createApp({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        this.successMessage = "Biedrs pievienots";
+        this.successMessage = "Member added";
         this.forms.member = {
           first_name: "",
           last_name: "",
           phone: "",
-          status: this.memberStatuses[0] || "Biedrs",
+          status: this.memberStatuses[0] || "Member",
           membership_fee: 0,
           joining_fee_paid: false,
           role: "member",
@@ -452,7 +452,7 @@ createApp({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        this.successMessage = "Biedra dati saglabāti";
+        this.successMessage = "Member details saved";
         await this.loadMembers();
       } catch (err) {
         this.errorMessage = err.message;
@@ -462,7 +462,7 @@ createApp({
       this.resetMessages();
       try {
         await this.api(`/api/members/${memberId}`, { method: "DELETE" });
-        this.successMessage = "Biedrs izdzēsts";
+        this.successMessage = "Member deleted";
         await this.loadMembers();
       } catch (err) {
         this.errorMessage = err.message;
@@ -472,7 +472,7 @@ createApp({
       this.resetMessages();
       try {
         await this.api(`/api/members/${memberId}/pin`, { method: "DELETE" });
-        this.successMessage = "PIN kods izdzēsts";
+        this.successMessage = "PIN deleted";
         await this.loadMembers();
       } catch (err) {
         this.errorMessage = err.message;
@@ -490,7 +490,7 @@ createApp({
             carry_over: this.forms.period.carry_over,
           }),
         });
-        this.successMessage = "Pārskata periods saglabāts";
+        this.successMessage = "Reporting period saved";
         await this.refreshAll();
       } catch (err) {
         this.errorMessage = err.message;
@@ -504,7 +504,7 @@ createApp({
           headers: { Authorization: `Bearer ${this.token}` },
         });
         if (!res.ok) {
-          let message = "Eksports neizdevās";
+          let message = "Export failed";
           try {
             const data = await res.json();
             message = data.error || message;
@@ -516,11 +516,11 @@ createApp({
         const blob = await res.blob();
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = "bilance.xlsx";
+        link.download = "balance.xlsx";
         document.body.appendChild(link);
         link.click();
         link.remove();
-        this.successMessage = "Bilance ir veiksmīgi eksportēta";
+        this.successMessage = "Balance exported successfully";
       } catch (err) {
         this.errorMessage = err.message;
       }
@@ -541,7 +541,7 @@ createApp({
       if (!this.editIncome.id) return;
       this.resetMessages();
       if (this.isAmountMissing(this.editIncome.amount)) {
-        this.errorMessage = "Lūdzu ievadi summu.";
+        this.errorMessage = "Please enter an amount.";
         return;
       }
       try {
@@ -554,7 +554,7 @@ createApp({
             description: this.editIncome.description,
           }),
         });
-        this.successMessage = "Ieņēmuma ieraksts atjaunots";
+        this.successMessage = "Income record updated";
         this.cancelIncomeEdit();
         await this.refreshAll();
       } catch (err) {
@@ -563,12 +563,12 @@ createApp({
     },
     async removeIncome(row) {
       if (!this.canEditEntries) return;
-      const ok = window.confirm("Vai tiešām dzēst šo ieņēmuma ierakstu?");
+      const ok = window.confirm("Are you sure you want to delete this income record?");
       if (!ok) return;
       this.resetMessages();
       try {
         await this.api(`/api/incomes/${row.id}`, { method: "DELETE" });
-        this.successMessage = "Ieņēmuma ieraksts izdzēsts";
+        this.successMessage = "Income record deleted";
         if (this.editIncome.id === row.id) {
           this.cancelIncomeEdit();
         }
@@ -594,7 +594,7 @@ createApp({
       if (!this.editExpense.id) return;
       this.resetMessages();
       if (this.isAmountMissing(this.editExpense.amount)) {
-        this.errorMessage = "Lūdzu ievadi summu.";
+        this.errorMessage = "Please enter an amount.";
         return;
       }
       try {
@@ -608,7 +608,7 @@ createApp({
             description: this.editExpense.description,
           }),
         });
-        this.successMessage = "Izdevumu ieraksts atjaunots";
+        this.successMessage = "Expense record updated";
         this.cancelExpenseEdit();
         await this.refreshAll();
       } catch (err) {
@@ -617,12 +617,12 @@ createApp({
     },
     async removeExpense(row) {
       if (!this.canEditEntries) return;
-      const ok = window.confirm("Vai tiešām dzēst šo izdevumu ierakstu?");
+      const ok = window.confirm("Are you sure you want to delete this expense record?");
       if (!ok) return;
       this.resetMessages();
       try {
         await this.api(`/api/expenses/${row.id}`, { method: "DELETE" });
-        this.successMessage = "Izdevumu ieraksts izdzēsts";
+        this.successMessage = "Expense record deleted";
         if (this.editExpense.id === row.id) {
           this.cancelExpenseEdit();
         }

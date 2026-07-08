@@ -1,7 +1,7 @@
 {
-  "name": "Biedrības Finansists",
-  "short_name": "Finansists",
-  "description": "Biedrības finanšu pārvaldības rīks",
+  "name": "Association Finance Tracker",
+  "short_name": "FinTracker",
+  "description": "Association finance management tool",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

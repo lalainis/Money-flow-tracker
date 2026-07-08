@@ -14,7 +14,7 @@ def create_member(client, token, **overrides):
         "first_name": "Janis",
         "last_name": "Berzins",
         "phone": "20000001",
-        "status": "Biedrs",
+        "status": "Member",
         "membership_fee": 12,
         "joining_fee_paid": False,
         "role": "member",
@@ -27,7 +27,7 @@ def test_auth_init_rejects_invalid_phone(client):
     response = client.post("/api/auth/init", json={"phone": "abc"})
 
     assert response.status_code == 400
-    assert "8 cipariem" in response.get_json()["error"]
+    assert "8 digits" in response.get_json()["error"]
 
 
 def test_admin_login_returns_token_and_role(client):
@@ -181,7 +181,7 @@ def test_add_other_income_rejects_non_positive_amount(client, admin_token):
     )
 
     assert response.status_code == 400
-    assert "lielākai par 0" in response.get_json()["error"]
+    assert "greater than 0" in response.get_json()["error"]
 
 
 def test_expense_upload_and_attachment_download(client, admin_token, app_module):
@@ -227,7 +227,7 @@ def test_expense_upload_rejects_unsupported_attachment_type(client, admin_token)
     )
 
     assert response.status_code == 400
-    assert "Nederīgs faila tips" in response.get_json()["error"]
+    assert "Invalid file type" in response.get_json()["error"]
 
 
 def test_expense_upload_rejects_malformed_multipart(client, admin_token):
@@ -239,7 +239,7 @@ def test_expense_upload_rejects_malformed_multipart(client, admin_token):
     )
 
     assert response.status_code == 400
-    assert "Nederīgs multipart pieprasījums" in response.get_json()["error"]
+    assert "Invalid multipart request" in response.get_json()["error"]
 
 
 def test_member_role_cannot_add_expense(client, admin_token, app_module):
@@ -475,7 +475,7 @@ def test_board_cannot_update_period_after_first_save(client, admin_token):
     )
 
     assert second_update.status_code == 403
-    assert "var mainit tikai admin" in second_update.get_json()["error"]
+    assert "only by admin" in second_update.get_json()["error"]
 
 
 def test_board_cannot_change_carry_over_after_first_save(client, admin_token):
@@ -523,7 +523,7 @@ def test_board_cannot_change_carry_over_after_first_save(client, admin_token):
     )
 
     assert second_update.status_code == 403
-    assert "atlikumu" in second_update.get_json()["error"]
+    assert "carry over" in second_update.get_json()["error"]
 
 
 def test_export_contains_expected_sheets_and_summary(client, admin_token):
@@ -551,9 +551,9 @@ def test_export_contains_expected_sheets_and_summary(client, admin_token):
     assert export_response.status_code == 200
 
     workbook = load_workbook(io.BytesIO(export_response.data))
-    assert set(["Ienemumi", "Izdevumi", "Kopsavilkums", "Biedri", "Labojumu zurnals"]).issubset(workbook.sheetnames)
+    assert set(["Incomes", "Expenses", "Summary", "Members", "Audit log"]).issubset(workbook.sheetnames)
 
-    summary_sheet = workbook["Kopsavilkums"]
-    assert summary_sheet["A1"].value == "Pārskata periods"
-    assert summary_sheet["A2"].value == "Ieņēmumi EUR"
-    assert summary_sheet["A3"].value == "Izdevumi EUR"
+    summary_sheet = workbook["Summary"]
+    assert summary_sheet["A1"].value == "Reporting period"
+    assert summary_sheet["A2"].value == "Incomes EUR"
+    assert summary_sheet["A3"].value == "Expenses EUR"

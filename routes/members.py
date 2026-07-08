@@ -12,6 +12,7 @@ from services import (
     is_admin_member,
     member_to_dict,
     next_member_list_no,
+    normalize_member_status,
     normalize_role,
     parse_entry_date,
     recalculate_member_paid_this_period,
@@ -89,24 +90,24 @@ def create_member():
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
 
-    status = str(data.get("status", "Biedrs")).strip()
+    status = normalize_member_status(data.get("status", "Member"))
     valid_statuses = [s.name for s in MemberStatus.query.all()]
     if status not in valid_statuses:
-        return jsonify({"error": f"Nederīgs statuss. Atļautie: {', '.join(valid_statuses)}"}), 400
+        return jsonify({"error": f"Invalid status. Allowed values: {', '.join(valid_statuses)}"}), 400
 
     if not validate_phone(phone):
-        return jsonify({"error": "Telefona Nr. jābūt ar 8 cipariem"}), 400
+        return jsonify({"error": "Phone number must contain 8 digits"}), 400
     if Member.query.filter_by(phone=phone).first():
-        return jsonify({"error": "Lietotājs ar šo telefona numuru jau eksistē"}), 409
+        return jsonify({"error": "A user with this phone number already exists"}), 409
     if role not in ROLES:
-        return jsonify({"error": "Nederīga loma"}), 400
+        return jsonify({"error": "Invalid role"}), 400
     if normalize_role(request.current_user.role) != "admin" and role == "admin":
-        return jsonify({"error": "Tikai admin drikst izveidot admin kontu"}), 403
+        return jsonify({"error": "Only admin can create admin accounts"}), 403
 
     member = Member(
         list_no=next_member_list_no(),
-        first_name=str(data.get("first_name", "")).strip() or "Vards",
-        last_name=str(data.get("last_name", "")).strip() or "Uzvards",
+        first_name=str(data.get("first_name", "")).strip() or "FirstName",
+        last_name=str(data.get("last_name", "")).strip() or "LastName",
         phone=phone,
         status=status,
         membership_fee=membership_fee,
@@ -128,11 +129,11 @@ def create_member():
 def update_member(member_id):
     member = db.session.get(Member, member_id)
     if not member:
-        return jsonify({"error": "Biedrs nav atrasts"}), 404
+        return jsonify({"error": "Member not found"}), 404
 
     requester_role = normalize_role(request.current_user.role)
     if requester_role != "admin" and is_admin_member(member):
-        return jsonify({"error": "Admin konts ir redzams un labojams tikai admin"}), 403
+        return jsonify({"error": "Admin account can only be viewed and edited by admin"}), 403
 
     data = request.get_json() or {}
     phone = str(data.get("phone", member.phone)).strip()
@@ -141,20 +142,20 @@ def update_member(member_id):
     ).strip()
 
     if not validate_phone(phone):
-        return jsonify({"error": "Telefona Nr. jābūt ar 8 cipariem"}), 400
+        return jsonify({"error": "Phone number must contain 8 digits"}), 400
 
     duplicate = Member.query.filter(Member.phone == phone, Member.id != member_id).first()
     if duplicate:
-        return jsonify({"error": "Telefona numurs jau aizņemts"}), 409
+        return jsonify({"error": "Phone number is already in use"}), 409
 
     member.first_name = str(data.get("first_name", member.first_name)).strip()
     member.last_name = str(data.get("last_name", member.last_name)).strip()
     member.phone = phone
     if "status" in data:
-        new_status = str(data["status"]).strip()
+        new_status = normalize_member_status(data["status"])
         valid_statuses = [s.name for s in MemberStatus.query.all()]
         if new_status not in valid_statuses:
-            return jsonify({"error": f"Nederīgs statuss. Atļautie: {', '.join(valid_statuses)}"}), 400
+            return jsonify({"error": f"Invalid status. Allowed values: {', '.join(valid_statuses)}"}), 400
         member.status = new_status
     try:
         membership_fee = to_decimal(data.get("membership_fee", get_effective_membership_fee(member, season_label)))
@@ -168,7 +169,7 @@ def update_member(member_id):
     if requester_role == "admin":
         role = normalize_role(data.get("role", member.role))
         if role not in ROLES:
-            return jsonify({"error": "Nederīga loma"}), 400
+            return jsonify({"error": "Invalid role"}), 400
         member.role = role
 
     db.session.commit()
@@ -180,10 +181,10 @@ def update_member(member_id):
 def delete_member(member_id):
     member = db.session.get(Member, member_id)
     if not member:
-        return jsonify({"error": "Biedrs nav atrasts"}), 404
+        return jsonify({"error": "Member not found"}), 404
 
     if normalize_role(request.current_user.role) != "admin" and is_admin_member(member):
-        return jsonify({"error": "Admin kontu var dzest tikai admin"}), 403
+        return jsonify({"error": "Only admin can delete admin accounts"}), 403
 
     db.session.delete(member)
     db.session.commit()
@@ -191,7 +192,7 @@ def delete_member(member_id):
     resequence_members()
     db.session.commit()
 
-    return jsonify({"message": "Biedrs izdzēsts"})
+    return jsonify({"message": "Member deleted"})
 
 
 @members_bp.route("/api/members/<int:member_id>/pin", methods=["DELETE"])
@@ -199,15 +200,15 @@ def delete_member(member_id):
 def clear_member_pin(member_id):
     member = db.session.get(Member, member_id)
     if not member:
-        return jsonify({"error": "Biedrs nav atrasts"}), 404
+        return jsonify({"error": "Member not found"}), 404
 
     if member.pin_hash is None:
-        return jsonify({"error": "PIN kods jau ir dzests"}), 409
+        return jsonify({"error": "PIN is already cleared"}), 409
 
     member.pin_hash = None
     db.session.commit()
 
-    return jsonify({"message": "PIN kods izdzests"})
+    return jsonify({"message": "PIN deleted"})
 
 
 @members_bp.route("/api/members/<int:member_id>/payment", methods=["POST"])
@@ -215,10 +216,10 @@ def clear_member_pin(member_id):
 def record_member_payment(member_id):
     member = db.session.get(Member, member_id)
     if not member:
-        return jsonify({"error": "Biedrs nav atrasts"}), 404
+        return jsonify({"error": "Member not found"}), 404
 
     if normalize_role(request.current_user.role) != "admin" and is_admin_member(member):
-        return jsonify({"error": "Admin konts nav pieejams"}), 403
+        return jsonify({"error": "Admin account is not accessible"}), 403
 
     data = request.get_json() or {}
     try:
@@ -228,14 +229,14 @@ def record_member_payment(member_id):
         return jsonify({"error": str(exc)}), 400
 
     if amount <= 0:
-        return jsonify({"error": "Summai jābūt lielākai par 0"}), 400
+        return jsonify({"error": "Amount must be greater than 0"}), 400
 
     income = Income(
         income_type="member_fee",
         member_id=member.id,
         amount=amount,
         entry_date=entry_date,
-        description="Biedra naudas iemaksa",
+        description="Membership fee payment",
     )
     db.session.add(income)
     db.session.flush()
@@ -249,4 +250,4 @@ def record_member_payment(member_id):
     if current_membership_fee > 0:
         progress = float((to_decimal(member.paid_this_period) / current_membership_fee) * 100)
 
-    return jsonify({"message": "Iemaksa pievienota", "progress_percent": round(progress, 2)})
+    return jsonify({"message": "Payment added", "progress_percent": round(progress, 2)})

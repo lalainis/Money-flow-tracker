@@ -26,15 +26,15 @@ def auth_init():
     phone = (data.get("phone") or "").strip()
 
     if not validate_phone(phone):
-        return jsonify({"error": "Telefona Nr. jābūt ar 8 cipariem"}), 400
+        return jsonify({"error": "Phone number must contain 8 digits"}), 400
 
     user = Member.query.filter_by(phone=phone).first()
     if not user:
-        return jsonify({"error": "Jūs neesat biedrs"}), 404
+        return jsonify({"error": "You are not a member"}), 404
     if normalize_role(user.role) == "admin":
-        return jsonify({"error": "Jūs neesat biedrs"}), 404
+        return jsonify({"error": "You are not a member"}), 404
     if normalize_role(user.role) == "member":
-        return jsonify({"error": "Jums nav tiesību ienākt."}), 403
+        return jsonify({"error": "You do not have permission to sign in."}), 403
 
     return jsonify({"needs_pin_setup": user.pin_hash is None})
 
@@ -47,23 +47,23 @@ def setup_pin():
     pin_confirm = (data.get("pin_confirm") or "").strip()
 
     if not validate_phone(phone):
-        return jsonify({"error": "Telefona Nr. jābūt ar 8 cipariem"}), 400
+        return jsonify({"error": "Phone number must contain 8 digits"}), 400
     if not validate_pin(pin):
-        return jsonify({"error": "PIN kodam jābūt ar 4 cipariem"}), 400
+        return jsonify({"error": "PIN must contain 4 digits"}), 400
     if pin != pin_confirm:
-        return jsonify({"error": "PIN kodi nesakrīt"}), 400
+        return jsonify({"error": "PIN values do not match"}), 400
 
     user = Member.query.filter_by(phone=phone).first()
     if not user:
-        return jsonify({"error": "Jūs neesat biedrs"}), 404
+        return jsonify({"error": "You are not a member"}), 404
     if normalize_role(user.role) == "member":
-        return jsonify({"error": "Jums nav tiesību ienākt."}), 403
+        return jsonify({"error": "You do not have permission to sign in."}), 403
     if user.pin_hash:
-        return jsonify({"error": "PIN kods jau ir uzstādīts"}), 409
+        return jsonify({"error": "PIN is already set"}), 409
 
     user.pin_hash = generate_password_hash(pin)
     db.session.commit()
-    return jsonify({"message": "PIN kods veiksmīgi saglabāts"})
+    return jsonify({"message": "PIN saved successfully"})
 
 
 @auth_bp.route("/api/auth/login", methods=["POST"])
@@ -73,13 +73,13 @@ def login():
     pin = (data.get("pin") or "").strip()
 
     if not validate_phone(phone):
-        return jsonify({"error": "Telefona Nr. jābūt ar 8 cipariem"}), 400
+        return jsonify({"error": "Phone number must contain 8 digits"}), 400
 
     user = Member.query.filter_by(phone=phone).first()
     if not user:
-        return jsonify({"error": "Jūs neesat biedrs"}), 404
+        return jsonify({"error": "You are not a member"}), 404
     if normalize_role(user.role) == "member":
-        return jsonify({"error": "Jums nav tiesību ienākt."}), 403
+        return jsonify({"error": "You do not have permission to sign in."}), 403
 
     now = datetime.now(UTC)
     if user.login_locked_until:
@@ -87,20 +87,20 @@ def login():
         if locked_until.tzinfo is None:
             locked_until = locked_until.replace(tzinfo=UTC)
         if locked_until > now:
-            return jsonify({"error": "Konts īslaicīgi bloķēts pēc vairākiem neveiksmīgiem mēģinājumiem"}), 429
+            return jsonify({"error": "Account temporarily locked after multiple failed attempts"}), 429
         user.login_locked_until = None
 
     if not user.pin_hash:
-        return jsonify({"error": "Lūdzu vispirms uzstādiet PIN kodu"}), 409
+        return jsonify({"error": "Please set your PIN first"}), 409
     if not validate_pin(pin) or not check_password_hash(user.pin_hash, pin):
         user.failed_login_attempts = int(user.failed_login_attempts or 0) + 1
         if user.failed_login_attempts >= AUTH_MAX_FAILED_ATTEMPTS:
             user.failed_login_attempts = 0
             user.login_locked_until = now + timedelta(minutes=AUTH_LOCKOUT_MINUTES)
             db.session.commit()
-            return jsonify({"error": "Konts īslaicīgi bloķēts pēc vairākiem neveiksmīgiem mēģinājumiem"}), 429
+            return jsonify({"error": "Account temporarily locked after multiple failed attempts"}), 429
         db.session.commit()
-        return jsonify({"error": "Nepareizs PIN kods"}), 401
+        return jsonify({"error": "Incorrect PIN"}), 401
 
     user.failed_login_attempts = 0
     user.login_locked_until = None
@@ -130,7 +130,7 @@ def logout():
     token = auth.replace("Bearer ", "").strip()
     AuthToken.query.filter_by(token=token).delete()
     db.session.commit()
-    return jsonify({"message": "Izrakstīšanās izdevusies"})
+    return jsonify({"message": "Logged out successfully"})
 
 
 @auth_bp.route("/api/dashboard")

@@ -17,11 +17,7 @@ body {
   margin: 0;
   font-family: "Manrope", "Segoe UI", sans-serif;
   color: var(--text);
-  background-image: linear-gradient(rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.5)),
-    url("/static/attēls fonam.jpg");
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
+  background: var(--bg);
   min-height: 100vh;
 }
 
@@ -481,84 +477,84 @@ hr {
   }
 
   .members-list-table td:nth-child(1)::before {
-    content: "Nr";
+    content: "No.";
   }
   .members-list-table td:nth-child(2)::before {
-    content: "Vārds";
+    content: "First name";
   }
   .members-list-table td:nth-child(3)::before {
-    content: "Uzvārds";
+    content: "Last name";
   }
   .members-list-table td:nth-child(4)::before {
-    content: "Telefons";
+    content: "Phone";
   }
   .members-list-table td:nth-child(5)::before {
-    content: "Iestāšanās maksa";
+    content: "Joining fee";
   }
   .members-list-table td:nth-child(6)::before {
-    content: "Jāmaksā periodā";
+    content: "Due this season";
   }
   .members-list-table td:nth-child(7)::before {
-    content: "Iemaksāts periodā";
+    content: "Paid this season";
   }
 
   .history-income-table td:nth-child(1)::before {
-    content: "Datums";
+    content: "Date";
   }
   .history-income-table td:nth-child(2)::before {
-    content: "Tips";
+    content: "Type";
   }
   .history-income-table td:nth-child(3)::before {
-    content: "Biedrs";
+    content: "Member";
   }
   .history-income-table td:nth-child(4)::before {
-    content: "Summa";
+    content: "Amount";
   }
   .history-income-table td:nth-child(5)::before {
-    content: "Apraksts";
+    content: "Description";
   }
 
   .history-expense-table td:nth-child(1)::before {
-    content: "Datums";
+    content: "Date";
   }
   .history-expense-table td:nth-child(2)::before {
-    content: "Kategorija";
+    content: "Category";
   }
   .history-expense-table td:nth-child(3)::before {
-    content: "Summa";
+    content: "Amount";
   }
   .history-expense-table td:nth-child(4)::before {
-    content: "Apraksts";
+    content: "Description";
   }
   .history-expense-table td:nth-child(5)::before {
-    content: "Fails";
+    content: "File";
   }
 
   .manage-members-table td:nth-child(1)::before {
-    content: "Nr";
+    content: "No.";
   }
   .manage-members-table td:nth-child(2)::before {
-    content: "Vārds";
+    content: "First name";
   }
   .manage-members-table td:nth-child(3)::before {
-    content: "Uzvārds";
+    content: "Last name";
   }
   .manage-members-table td:nth-child(4)::before {
-    content: "Telefons";
+    content: "Phone";
   }
   .manage-members-table td:nth-child(5)::before {
-    content: "Statuss";
+    content: "Status";
   }
   .manage-members-table td:nth-child(6)::before {
-    content: "Loma";
+    content: "Role";
   }
   .manage-members-table td:nth-child(7)::before {
-    content: "Maksa";
+    content: "Fee";
   }
   .manage-members-table td:nth-child(8)::before {
-    content: "Iestāšanās maksa";
+    content: "Joining fee";
   }
   .manage-members-table td:nth-child(9)::before {
-    content: "Darbības";
+    content: "Actions";
   }
 }

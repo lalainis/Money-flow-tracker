@@ -58,20 +58,20 @@ def update_period():
 
     period_lock = get_or_create_period_lock(season_label)
     if current_user_role == "board" and period_lock.membership_fee_locked:
-        return jsonify({"error": "Saja perioda biedra maksu pec pirmas saglabasanas var mainit tikai admin"}), 403
+        return jsonify({"error": "In this period, membership fee can be changed only by admin after first save"}), 403
     if current_user_role == "board" and period_lock.carry_over_locked:
-        return jsonify({"error": "Saja perioda atlikumu pec pirmas saglabasanas var mainit tikai admin"}), 403
+        return jsonify({"error": "In this period, carry over can be changed only by admin after first save"}), 403
 
     if len(season_label) != 9 or "/" not in season_label:
-        return jsonify({"error": "Sezonas formatam jabut yyyy/yyyy"}), 400
+        return jsonify({"error": "Season format must be yyyy/yyyy"}), 400
 
     try:
         start_year = int(season_label[:4])
         end_year = int(season_label[5:])
     except ValueError:
-        return jsonify({"error": "Sezonas formatam jabut yyyy/yyyy"}), 400
+        return jsonify({"error": "Season format must be yyyy/yyyy"}), 400
     if end_year != start_year + 1:
-        return jsonify({"error": "Sezonas gadi neatbilst formatam yyyy/yyyy"}), 400
+        return jsonify({"error": "Season years do not match yyyy/yyyy format"}), 400
 
     if is_new_season:
         Period.query.update({"active": False})
@@ -110,4 +110,4 @@ def update_period():
             member.joining_fee_paid = False
 
     db.session.commit()
-    return jsonify({"message": "Parskata periods atjaunots"})
+    return jsonify({"message": "Reporting period updated"})

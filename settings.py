@@ -52,7 +52,7 @@ DB_KEEPALIVES_COUNT = _env_int("DB_KEEPALIVES_COUNT", default=5, minimum=1)
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     if IS_RENDER or IS_PRODUCTION:
-        raise RuntimeError("SECRET_KEY ir obligāts produkcijas videi")
+        raise RuntimeError("SECRET_KEY is required in production")
     SECRET_KEY = "dev-only-secret-key-change-me"
 
 _cors_origins = [item.strip() for item in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if item.strip()]
@@ -72,19 +72,19 @@ AUTH_LOCKOUT_MINUTES = max(1, int(os.getenv("AUTH_LOCKOUT_MINUTES", "15")))
 
 ROLES = {"cashier", "board", "auditor", "admin", "member"}
 EXPENSE_CATEGORIES = [
-    "Saimnieciskie izdevumi",
-    "Būvmateriāli",
-    "Piebarošana",
-    "Nodokļi",
-    "Licences",
-    "Platību maksājumi",
-    "Internets",
-    "Elektrība",
-    "Apdrošināšana",
-    "Pļaušanas izdevumi",
-    "Bebru uzraudzības izdevumi",
-    "LMS biedru maksa",
-    "Bankas komisijas maksa",
-    "Citi",
+    "Operating expenses",
+    "Construction materials",
+    "Feed",
+    "Taxes",
+    "Licenses",
+    "Land payments",
+    "Internet",
+    "Electricity",
+    "Insurance",
+    "Mowing expenses",
+    "Beaver monitoring expenses",
+    "LMS membership fee",
+    "Bank commission fee",
+    "Other",
 ]
 ALLOWED_ATTACHMENT_EXTENSIONS = {"pdf", "jpg", "jpeg", "png", "txt", "doc", "docx", "xlsx"}

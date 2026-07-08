@@ -17,6 +17,7 @@ from services import (
     income_to_payload,
     is_allowed_attachment,
     localize_income_type,
+    normalize_expense_category,
     normalize_role,
     parse_entry_date,
     period_totals,
@@ -42,32 +43,32 @@ def add_other_income():
     description = str(data.get("description", "")).strip()
 
     if amount <= 0:
-        return jsonify({"error": "Summai jābūt lielākai par 0"}), 400
+        return jsonify({"error": "Amount must be greater than 0"}), 400
 
     income = Income(
-        income_type="neplānots ienākums",
+        income_type="other_income",
         amount=amount,
         entry_date=entry_date,
         description=description,
     )
     db.session.add(income)
     db.session.commit()
-    return jsonify({"message": "Ieņēmumi pievienoti"}), 201
+    return jsonify({"message": "Income added"}), 201
 
 
 @finance_bp.route("/api/expenses", methods=["POST"])
 @token_required({"cashier", "admin"})
 def add_expense():
     if request.mimetype == "multipart/form-data" and not request.form and not request.files:
-        return jsonify({"error": "Nederīgs multipart pieprasījums"}), 400
+        return jsonify({"error": "Invalid multipart request"}), 400
 
-    category = (request.form.get("category") or "").strip()
+    category = normalize_expense_category(request.form.get("category"))
     amount_raw = request.form.get("amount", "0")
     entry_date_raw = request.form.get("entry_date", date.today().isoformat())
     description = (request.form.get("description") or "").strip()
 
     if category not in EXPENSE_CATEGORIES:
-        return jsonify({"error": "Nederīga izdevumu kategorija"}), 400
+        return jsonify({"error": "Invalid expense category"}), 400
 
     try:
         amount = to_decimal(amount_raw)
@@ -75,14 +76,14 @@ def add_expense():
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     if amount <= 0:
-        return jsonify({"error": "Summai jābūt lielākai par 0"}), 400
+        return jsonify({"error": "Amount must be greater than 0"}), 400
 
     attachment_name = None
     file = request.files.get("attachment")
     if file and file.filename:
         safe_name = secure_filename(file.filename)
         if not safe_name or not is_allowed_attachment(safe_name):
-            return jsonify({"error": "Nederīgs faila tips"}), 400
+            return jsonify({"error": "Invalid file type"}), 400
         unique_name = f"{uuid.uuid4()}_{safe_name}"
         file.save(UPLOAD_DIR / unique_name)
         attachment_name = unique_name
@@ -99,7 +100,7 @@ def add_expense():
     db.session.add(expense)
     db.session.commit()
 
-    return jsonify({"message": "Izdevumi pievienoti"}), 201
+    return jsonify({"message": "Expense added"}), 201
 
 
 @finance_bp.route("/api/history")
@@ -164,7 +165,7 @@ def history():
 def update_income(income_id):
     income = db.session.get(Income, income_id)
     if not income:
-        return jsonify({"error": "Ieņēmuma ieraksts nav atrasts"}), 404
+        return jsonify({"error": "Income record not found"}), 404
 
     data = request.get_json() or {}
     try:
@@ -173,7 +174,7 @@ def update_income(income_id):
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     if amount <= 0:
-        return jsonify({"error": "Summai jābūt lielākai par 0"}), 400
+        return jsonify({"error": "Amount must be greater than 0"}), 400
 
     previous_member_fee = income.income_type in {"member_fee", "biedra nauda"}
     previous_member_id = income.member_id
@@ -196,7 +197,7 @@ def update_income(income_id):
     )
 
     db.session.commit()
-    return jsonify({"message": "Ieņēmuma ieraksts atjaunots"})
+    return jsonify({"message": "Income record updated"})
 
 
 @finance_bp.route("/api/expenses/<int:expense_id>", methods=["PUT"])
@@ -204,13 +205,13 @@ def update_income(income_id):
 def update_expense(expense_id):
     expense = db.session.get(Expense, expense_id)
     if not expense:
-        return jsonify({"error": "Izdevumu ieraksts nav atrasts"}), 404
+        return jsonify({"error": "Expense record not found"}), 404
 
     data = request.get_json() or {}
     old_payload = expense_to_payload(expense)
-    category = str(data.get("category", expense.category)).strip()
+    category = normalize_expense_category(data.get("category", expense.category))
     if category not in EXPENSE_CATEGORIES:
-        return jsonify({"error": "Nederīga izdevumu kategorija"}), 400
+        return jsonify({"error": "Invalid expense category"}), 400
 
     try:
         amount = to_decimal(data.get("amount", expense.amount) or 0)
@@ -218,7 +219,7 @@ def update_expense(expense_id):
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     if amount <= 0:
-        return jsonify({"error": "Summai jābūt lielākai par 0"}), 400
+        return jsonify({"error": "Amount must be greater than 0"}), 400
 
     expense.category = category
     expense.amount = amount
@@ -235,7 +236,7 @@ def update_expense(expense_id):
     )
 
     db.session.commit()
-    return jsonify({"message": "Izdevumu ieraksts atjaunots"})
+    return jsonify({"message": "Expense record updated"})
 
 
 @finance_bp.route("/api/incomes/<int:income_id>", methods=["DELETE"])
@@ -243,7 +244,7 @@ def update_expense(expense_id):
 def delete_income(income_id):
     income = db.session.get(Income, income_id)
     if not income:
-        return jsonify({"error": "Ieņēmuma ieraksts nav atrasts"}), 404
+        return jsonify({"error": "Income record not found"}), 404
 
     is_member_fee = income.income_type in {"member_fee", "biedra nauda"}
     member_id = income.member_id
@@ -264,7 +265,7 @@ def delete_income(income_id):
     )
 
     db.session.commit()
-    return jsonify({"message": "Ieņēmuma ieraksts izdzēsts"})
+    return jsonify({"message": "Income record deleted"})
 
 
 @finance_bp.route("/api/expenses/<int:expense_id>", methods=["DELETE"])
@@ -272,7 +273,7 @@ def delete_income(income_id):
 def delete_expense(expense_id):
     expense = db.session.get(Expense, expense_id)
     if not expense:
-        return jsonify({"error": "Izdevumu ieraksts nav atrasts"}), 404
+        return jsonify({"error": "Expense record not found"}), 404
 
     season_label = season_label_for_date(expense.entry_date)
     old_payload = expense_to_payload(expense)
@@ -288,7 +289,7 @@ def delete_expense(expense_id):
     )
 
     db.session.commit()
-    return jsonify({"message": "Izdevumu ieraksts izdzēsts"})
+    return jsonify({"message": "Expense record deleted"})
 
 
 @finance_bp.route("/api/audit-logs")
@@ -328,12 +329,12 @@ def list_audit_logs():
 def get_attachment(filename):
     expense = Expense.query.filter_by(attachment=filename).first()
     if not expense:
-        return jsonify({"error": "Pielikums nav atrasts"}), 404
+        return jsonify({"error": "Attachment not found"}), 404
 
     requester_role = normalize_role(request.current_user.role)
     is_owner = expense.created_by_member_id == request.current_user.id
     if requester_role not in {"board", "admin", "auditor"} and not is_owner:
-        return jsonify({"error": "Nepietiekamas tiesības"}), 403
+        return jsonify({"error": "Insufficient permissions"}), 403
 
     return send_from_directory(UPLOAD_DIR, filename, as_attachment=False)
 
@@ -365,10 +366,10 @@ def export_balance():
 
     wb = Workbook()
     ws_income = wb.active
-    ws_income.title = "Ienemumi"
+    ws_income.title = "Incomes"
 
-    ws_income.append(["Tips", "Biedrs", "Summa EUR", "Datums", "Apraksts"])
-    ws_income.append(["Atlikums no iepriekseja perioda", "", float(period.carry_over), "", ""])
+    ws_income.append(["Type", "Member", "Amount EUR", "Date", "Description"])
+    ws_income.append(["Carry over from previous period", "", float(period.carry_over), "", ""])
 
     for row in incomes:
         member = db.session.get(Member, row.member_id) if row.member_id else None
@@ -385,10 +386,10 @@ def export_balance():
             ]
         )
 
-    ws_income.append(["Ienemumi kopā EUR", "", totals["income_total"], "", ""])
+    ws_income.append(["Total incomes EUR", "", totals["income_total"], "", ""])
 
-    ws_expense = wb.create_sheet("Izdevumi")
-    ws_expense.append(["Kategorija", "Summa EUR", "Datums", "Apraksts", "Pievienotais fails"])
+    ws_expense = wb.create_sheet("Expenses")
+    ws_expense.append(["Category", "Amount EUR", "Date", "Description", "Attachment"])
 
     for row in expenses:
         ws_expense.append(
@@ -401,19 +402,19 @@ def export_balance():
             ]
         )
 
-    ws_expense.append(["Izdevumi kopā EUR", totals["expense_total"], "", "", ""])
+    ws_expense.append(["Total expenses EUR", totals["expense_total"], "", "", ""])
 
-    ws_summary = wb.create_sheet("Kopsavilkums")
-    ws_summary.append(["Pārskata periods", period.season_label])
-    ws_summary.append(["Ieņēmumi EUR", totals["income_total"]])
-    ws_summary.append(["Izdevumi EUR", totals["expense_total"]])
+    ws_summary = wb.create_sheet("Summary")
+    ws_summary.append(["Reporting period", period.season_label])
+    ws_summary.append(["Incomes EUR", totals["income_total"]])
+    ws_summary.append(["Expenses EUR", totals["expense_total"]])
     if totals["difference"] >= 0:
-        ws_summary.append(["Atlikums EUR", totals["balance"]])
+        ws_summary.append(["Balance EUR", totals["balance"]])
     else:
-        ws_summary.append(["Deficīts EUR", totals["deficit"]])
+        ws_summary.append(["Deficit EUR", totals["deficit"]])
 
-    ws_members = wb.create_sheet("Biedri")
-    ws_members.append(["Nr.", "Vārds", "Uzvārds", "Statuss", "Jāmaksā EUR", "Samaksāts EUR", "Iestāšanās maksa"])
+    ws_members = wb.create_sheet("Members")
+    ws_members.append(["No.", "First name", "Last name", "Status", "Due EUR", "Paid EUR", "Joining fee"])
     all_members = Member.query.order_by(Member.list_no).all()
     if requester_role != "admin":
         all_members = [m for m in all_members if normalize_role(m.role) != "admin"]
@@ -438,12 +439,10 @@ def export_balance():
     for m in all_members:
         fee = float(fee_rows_map.get(m.id, m.membership_fee))
         paid = float(paid_rows_map.get(m.id, 0))
-        ws_members.append(
-            [m.list_no, m.first_name, m.last_name, m.status, fee, paid, "Jā" if m.joining_fee_paid else "Nē"]
-        )
+        ws_members.append([m.list_no, m.first_name, m.last_name, m.status, fee, paid, "Yes" if m.joining_fee_paid else "No"])
 
-    ws_audit = wb.create_sheet("Labojumu zurnals")
-    ws_audit.append(["Laiks", "Darbība", "Ieraksta tips", "Ieraksta ID", "Lietotājs", "Vecā vērtība", "Jaunā vērtība"])
+    ws_audit = wb.create_sheet("Audit log")
+    ws_audit.append(["Time", "Action", "Record type", "Record ID", "User", "Old value", "New value"])
     audit_rows = AuditLog.query.filter_by(season_label=period.season_label).order_by(AuditLog.changed_at.asc()).all()
     for row in audit_rows:
         actor = db.session.get(Member, row.changed_by_member_id)
@@ -453,8 +452,8 @@ def export_balance():
         ws_audit.append(
             [
                 row.changed_at.isoformat(sep=" ", timespec="seconds"),
-                "Labots" if row.action == "update" else "Dzēsts",
-                "Ieņēmums" if row.entity_type == "income" else "Izdevums",
+                "Updated" if row.action == "update" else "Deleted",
+                "Income" if row.entity_type == "income" else "Expense",
                 row.entity_id,
                 actor_name,
                 row.old_data or "",

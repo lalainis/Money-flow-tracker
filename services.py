@@ -16,7 +16,7 @@ def to_decimal(value):
     try:
         return Decimal(str(value)).quantize(Decimal("0.01"))
     except (InvalidOperation, ValueError, TypeError) as exc:
-        raise ValueError("Nederīga skaitliska vērtība") from exc
+        raise ValueError("Invalid numeric value") from exc
 
 
 def current_period():
@@ -182,15 +182,15 @@ def token_required(allowed_roles=None):
 
             user_id = session_token.member_id if session_token else None
             if not user_id:
-                return jsonify({"error": "Nepieciešama autorizācija"}), 401
+                return jsonify({"error": "Authorization is required"}), 401
 
             user = db.session.get(Member, user_id)
             if not user:
-                return jsonify({"error": "Lietotājs nav atrasts"}), 401
+                return jsonify({"error": "User not found"}), 401
 
             user_role = normalize_role(user.role)
             if user_role not in allowed_roles:
-                return jsonify({"error": "Nepietiekamas tiesības"}), 403
+                return jsonify({"error": "Insufficient permissions"}), 403
 
             request.current_user = user
             return fn(*args, **kwargs)
@@ -217,7 +217,7 @@ def parse_entry_date(raw_value):
     try:
         return datetime.strptime(raw_value or date.today().isoformat(), "%Y-%m-%d").date()
     except (TypeError, ValueError) as exc:
-        raise ValueError("Nederīgs datuma formāts. Izmanto YYYY-MM-DD") from exc
+        raise ValueError("Invalid date format. Use YYYY-MM-DD") from exc
 
 
 def to_bool(value):
@@ -233,25 +233,75 @@ def to_bool(value):
 def localize_income_type(raw_type):
     value = (raw_type or "").strip().lower()
     mapping = {
-        "member_fee": "Biedra nauda",
-        "biedra nauda": "Biedra nauda",
-        "neplānots ienākums": "Neplānots ienākums",
-        "neplanots ienakums": "Neplānots ienākums",
-        "other_income": "Neplānots ienākums",
+        "member_fee": "Membership fee",
+        "membership_fee": "Membership fee",
+        "biedra nauda": "Membership fee",
+        "neplānots ienākums": "Other income",
+        "neplanots ienakums": "Other income",
+        "other_income": "Other income",
     }
     return mapping.get(value, raw_type)
 
 
+def normalize_member_status(raw_status):
+    status = str(raw_status or "").strip()
+    aliases = {
+        "Biedrs": "Member",
+        "Kandidāts": "Candidate",
+        "Kandidats": "Candidate",
+        "Vecbiedrs 2/3": "Senior 2/3",
+        "Vecbiedrs 1/2": "Senior 1/2",
+    }
+    return aliases.get(status, status)
+
+
+def normalize_expense_category(raw_category):
+    category = str(raw_category or "").strip()
+    aliases = {
+        "Saimnieciskie izdevumi": "Operating expenses",
+        "Būvmateriāli": "Construction materials",
+        "Buvmateriali": "Construction materials",
+        "Piebarošana": "Feed",
+        "Piebarosana": "Feed",
+        "Nodokļi": "Taxes",
+        "Nodokli": "Taxes",
+        "Licences": "Licenses",
+        "Platību maksājumi": "Land payments",
+        "Platibu maksajumi": "Land payments",
+        "Internets": "Internet",
+        "Elektrība": "Electricity",
+        "Elektriba": "Electricity",
+        "Apdrošināšana": "Insurance",
+        "Apdrosinasana": "Insurance",
+        "Pļaušanas izdevumi": "Mowing expenses",
+        "Plausanas izdevumi": "Mowing expenses",
+        "Bebru uzraudzības izdevumi": "Beaver monitoring expenses",
+        "Bebru uzraudzibas izdevumi": "Beaver monitoring expenses",
+        "LMS biedru maksa": "LMS membership fee",
+        "Bankas komisijas maksa": "Bank commission fee",
+        "Citi": "Other",
+    }
+    return aliases.get(category, category)
+
+
 def calculate_membership_fee_for_period(member, base_fee):
     status = (member.status or "").strip().lower()
+    status_aliases = {
+        "biedrs": "member",
+        "kandidāts": "candidate",
+        "kandidats": "candidate",
+        "vecbiedrs 2/3": "senior 2/3",
+        "vecbiedrs 1/2": "senior 1/2",
+    }
+    status = status_aliases.get(status, status)
     base = to_decimal(base_fee)
     fee = base
 
     if status == "vip":
         fee = Decimal("0.00")
-    elif status == "vecbiedrs 2/3":
+    elif status == "senior 2/3":
         fee = (base * Decimal("2") / Decimal("3")).quantize(Decimal("0.01"))
-    elif status == "vecbiedrs 1/2":
+    elif status == "senior 1/2":
         fee = (base / Decimal("2")).quantize(Decimal("0.01"))
 
     if to_bool(member.joining_fee_paid):
@@ -354,16 +404,21 @@ def next_member_list_no():
 
 
 def ensure_seed_data():
-    default_statuses = ["Biedrs", "Kandidāts", "VIP", "Vecbiedrs 2/3", "Vecbiedrs 1/2"]
+    default_statuses = ["Member", "Candidate", "VIP", "Senior 2/3", "Senior 1/2"]
     for name in default_statuses:
         if not MemberStatus.query.filter_by(name=name).first():
             db.session.add(MemberStatus(name=name))
 
     status_aliases = {
-        "active": "Biedrs",
-        "member": "Biedrs",
-        "candidate": "Kandidāts",
+        "active": "Member",
+        "member": "Member",
+        "biedrs": "Member",
+        "candidate": "Candidate",
+        "kandidāts": "Candidate",
+        "kandidats": "Candidate",
         "vip": "VIP",
+        "vecbiedrs 2/3": "Senior 2/3",
+        "vecbiedrs 1/2": "Senior 1/2",
     }
     for member in Member.query.all():
         normalized = (member.status or "").strip().lower()
