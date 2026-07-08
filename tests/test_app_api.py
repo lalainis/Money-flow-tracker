@@ -1,9 +1,10 @@
 import io
-import importlib
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
 from openpyxl import load_workbook
+
+import settings
 
 
 def auth_headers(token):
@@ -572,11 +573,7 @@ def test_login_sets_cookie_and_cookie_auth_works(client):
 
 
 def test_auth_init_rate_limit_per_phone(client):
-    settings_module = importlib.import_module("settings")
-    limit_value = str(settings_module.AUTH_INIT_RATE_PHONE).strip()
-    limit_count_token = limit_value.split(" ", 1)[0]
-    assert limit_count_token.isdigit(), f"Unexpected AUTH_INIT_RATE_PHONE format: {limit_value}"
-    limit_count = int(limit_count_token)
+    limit_count = int(str(settings.AUTH_INIT_RATE_PHONE).split(" ", 1)[0])
 
     for _ in range(limit_count):
         response = client.post("/api/auth/init", json={"phone": "29123456"})
