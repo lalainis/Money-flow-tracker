@@ -557,3 +557,23 @@ def test_export_contains_expected_sheets_and_summary(client, admin_token):
     assert summary_sheet["A1"].value == "Reporting period"
     assert summary_sheet["A2"].value == "Incomes EUR"
     assert summary_sheet["A3"].value == "Expenses EUR"
+
+
+def test_login_sets_cookie_and_cookie_auth_works(client):
+    login = client.post("/api/auth/login", json={"phone": "29123456", "pin": "0308"})
+    assert login.status_code == 200
+    set_cookie_header = login.headers.get("Set-Cookie", "")
+    assert "auth_token=" in set_cookie_header
+    assert "HttpOnly" in set_cookie_header
+
+    dashboard = client.get("/api/dashboard")
+    assert dashboard.status_code == 200
+
+
+def test_auth_init_rate_limit_per_phone(client):
+    for _ in range(10):
+        response = client.post("/api/auth/init", json={"phone": "29123456"})
+        assert response.status_code == 200
+
+    limited = client.post("/api/auth/init", json={"phone": "29123456"})
+    assert limited.status_code == 429

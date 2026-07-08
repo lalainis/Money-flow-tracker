@@ -9,7 +9,7 @@ from werkzeug.security import generate_password_hash
 
 from app_core import db
 from models import AuthToken, Expense, Income, Member, MemberSeasonFee, MemberStatus, Period, PeriodLock, AuditLog
-from settings import ALLOWED_ATTACHMENT_EXTENSIONS, AUTH_TOKEN_TTL_HOURS, ROLES
+from settings import ALLOWED_ATTACHMENT_EXTENSIONS, AUTH_COOKIE_NAME, AUTH_TOKEN_TTL_HOURS, ROLES
 
 
 def to_decimal(value):
@@ -169,7 +169,7 @@ def token_required(allowed_roles=None):
         @wraps(fn)
         def wrapper(*args, **kwargs):
             auth = request.headers.get("Authorization", "")
-            token = auth.replace("Bearer ", "").strip()
+            token = auth.replace("Bearer ", "").strip() or request.cookies.get(AUTH_COOKIE_NAME, "").strip()
             session_token = AuthToken.query.filter_by(token=token).first()
             if session_token and session_token.expires_at:
                 expires_at = session_token.expires_at

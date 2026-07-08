@@ -69,6 +69,9 @@ else:
 AUTH_TOKEN_TTL_HOURS = max(1, int(os.getenv("AUTH_TOKEN_TTL_HOURS", "12")))
 AUTH_MAX_FAILED_ATTEMPTS = max(3, int(os.getenv("AUTH_MAX_FAILED_ATTEMPTS", "5")))
 AUTH_LOCKOUT_MINUTES = max(1, int(os.getenv("AUTH_LOCKOUT_MINUTES", "15")))
+AUTH_COOKIE_NAME = os.getenv("AUTH_COOKIE_NAME", "auth_token")
+AUTH_COOKIE_SAMESITE = os.getenv("AUTH_COOKIE_SAMESITE", "Lax")
+AUTH_COOKIE_SECURE = _env_bool("AUTH_COOKIE_SECURE", default=IS_RENDER or IS_PRODUCTION)
 
 ROLES = {"cashier", "board", "auditor", "admin", "member"}
 EXPENSE_CATEGORIES = [

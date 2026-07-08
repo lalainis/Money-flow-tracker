@@ -2,11 +2,13 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from flask import Blueprint, jsonify, request
+from flask_limiter.util import get_remote_address
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from app_core import db
+from app_core import db, limiter
 from models import AuthToken, Member
 from settings import AUTH_LOCKOUT_MINUTES, AUTH_MAX_FAILED_ATTEMPTS, AUTH_TOKEN_TTL_HOURS
+from settings import AUTH_COOKIE_NAME, AUTH_COOKIE_SAMESITE, AUTH_COOKIE_SECURE
 from services import (
     get_period_for_request,
     member_to_dict,
@@ -20,7 +22,16 @@ from services import (
 auth_bp = Blueprint("auth", __name__)
 
 
+def _phone_or_ip_key():
+    data = request.get_json(silent=True) or {}
+    phone = str(data.get("phone") or "").strip()
+    ip = get_remote_address()
+    return f"{ip}:{phone or 'no-phone'}"
+
+
 @auth_bp.route("/api/auth/init", methods=["POST"])
+@limiter.limit("30 per minute")
+@limiter.limit("10 per minute", key_func=_phone_or_ip_key)
 def auth_init():
     data = request.get_json() or {}
     phone = (data.get("phone") or "").strip()
@@ -29,17 +40,15 @@ def auth_init():
         return jsonify({"error": "Phone number must contain 8 digits"}), 400
 
     user = Member.query.filter_by(phone=phone).first()
-    if not user:
-        return jsonify({"error": "You are not a member"}), 404
-    if normalize_role(user.role) == "admin":
-        return jsonify({"error": "You are not a member"}), 404
-    if normalize_role(user.role) == "member":
-        return jsonify({"error": "You do not have permission to sign in."}), 403
+    if not user or normalize_role(user.role) in {"admin", "member"}:
+        return jsonify({"needs_pin_setup": False})
 
     return jsonify({"needs_pin_setup": user.pin_hash is None})
 
 
 @auth_bp.route("/api/auth/setup-pin", methods=["POST"])
+@limiter.limit("15 per minute")
+@limiter.limit("5 per minute", key_func=_phone_or_ip_key)
 def setup_pin():
     data = request.get_json() or {}
     phone = (data.get("phone") or "").strip()
@@ -54,12 +63,10 @@ def setup_pin():
         return jsonify({"error": "PIN values do not match"}), 400
 
     user = Member.query.filter_by(phone=phone).first()
-    if not user:
-        return jsonify({"error": "You are not a member"}), 404
-    if normalize_role(user.role) == "member":
-        return jsonify({"error": "You do not have permission to sign in."}), 403
+    if not user or normalize_role(user.role) == "member":
+        return jsonify({"error": "Unable to set PIN for this account"}), 400
     if user.pin_hash:
-        return jsonify({"error": "PIN is already set"}), 409
+        return jsonify({"error": "Unable to set PIN for this account"}), 400
 
     user.pin_hash = generate_password_hash(pin)
     db.session.commit()
@@ -67,6 +74,8 @@ def setup_pin():
 
 
 @auth_bp.route("/api/auth/login", methods=["POST"])
+@limiter.limit("20 per minute")
+@limiter.limit("6 per minute", key_func=_phone_or_ip_key)
 def login():
     data = request.get_json() or {}
     phone = (data.get("phone") or "").strip()
@@ -76,10 +85,8 @@ def login():
         return jsonify({"error": "Phone number must contain 8 digits"}), 400
 
     user = Member.query.filter_by(phone=phone).first()
-    if not user:
-        return jsonify({"error": "You are not a member"}), 404
-    if normalize_role(user.role) == "member":
-        return jsonify({"error": "You do not have permission to sign in."}), 403
+    if not user or normalize_role(user.role) == "member":
+        return jsonify({"error": "Invalid phone number or PIN"}), 401
 
     now = datetime.now(UTC)
     if user.login_locked_until:
@@ -91,7 +98,7 @@ def login():
         user.login_locked_until = None
 
     if not user.pin_hash:
-        return jsonify({"error": "Please set your PIN first"}), 409
+        return jsonify({"error": "Invalid phone number or PIN"}), 401
     if not validate_pin(pin) or not check_password_hash(user.pin_hash, pin):
         user.failed_login_attempts = int(user.failed_login_attempts or 0) + 1
         if user.failed_login_attempts >= AUTH_MAX_FAILED_ATTEMPTS:
@@ -100,7 +107,7 @@ def login():
             db.session.commit()
             return jsonify({"error": "Account temporarily locked after multiple failed attempts"}), 429
         db.session.commit()
-        return jsonify({"error": "Incorrect PIN"}), 401
+        return jsonify({"error": "Invalid phone number or PIN"}), 401
 
     user.failed_login_attempts = 0
     user.login_locked_until = None
@@ -115,22 +122,34 @@ def login():
     )
     db.session.commit()
 
-    return jsonify(
+    response = jsonify(
         {
             "token": token,
             "user": member_to_dict(user),
         }
     )
+    response.set_cookie(
+        AUTH_COOKIE_NAME,
+        token,
+        max_age=int(timedelta(hours=AUTH_TOKEN_TTL_HOURS).total_seconds()),
+        httponly=True,
+        secure=AUTH_COOKIE_SECURE,
+        samesite=AUTH_COOKIE_SAMESITE,
+        path="/",
+    )
+    return response
 
 
 @auth_bp.route("/api/auth/logout", methods=["POST"])
 @token_required()
 def logout():
     auth = request.headers.get("Authorization", "")
-    token = auth.replace("Bearer ", "").strip()
+    token = auth.replace("Bearer ", "").strip() or request.cookies.get(AUTH_COOKIE_NAME, "").strip()
     AuthToken.query.filter_by(token=token).delete()
     db.session.commit()
-    return jsonify({"message": "Logged out successfully"})
+    response = jsonify({"message": "Logged out successfully"})
+    response.delete_cookie(AUTH_COOKIE_NAME, path="/")
+    return response
 
 
 @auth_bp.route("/api/dashboard")

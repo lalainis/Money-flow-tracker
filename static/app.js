@@ -3,7 +3,6 @@ const { createApp } = Vue;
 createApp({
   data() {
     return {
-      token: localStorage.getItem("token") || "",
       user: JSON.parse(localStorage.getItem("user") || "null"),
       tab: "income",
       auth: {
@@ -54,7 +53,7 @@ createApp({
       return ["cashier", "admin"].includes(this.user?.role);
     },
     canWriteExpense() {
-      return ["cashier", "admin", "member"].includes(this.user?.role);
+      return ["cashier", "admin"].includes(this.user?.role);
     },
     canManageMembers() {
       return ["board", "admin"].includes(this.user?.role);
@@ -146,10 +145,7 @@ createApp({
     },
     async api(path, options = {}) {
       const headers = options.headers || {};
-      if (this.token) {
-        headers.Authorization = `Bearer ${this.token}`;
-      }
-      const response = await fetch(path, { ...options, headers });
+      const response = await fetch(path, { ...options, headers, credentials: options.credentials || "same-origin" });
       const contentType = response.headers.get("content-type") || "";
       let data = null;
       let rawText = "";
@@ -159,6 +155,11 @@ createApp({
         rawText = await response.text();
       }
       if (!response.ok) {
+        if (response.status === 401) {
+          this.user = null;
+          localStorage.removeItem("user");
+          this.auth.step = "check";
+        }
         const fallbackMessage = rawText
           ? `HTTP ${response.status}: ${rawText.slice(0, 200)}`
           : `HTTP ${response.status}`;
@@ -172,7 +173,7 @@ createApp({
       this.config = await this.api("/api/config");
     },
     async loadMemberStatuses() {
-      if (!this.token || !this.canManageMembers) {
+      if (!this.user || !this.canManageMembers) {
         this.memberStatuses = [];
         return;
       }
@@ -192,11 +193,6 @@ createApp({
         });
         this.auth.step = data.needs_pin_setup ? "setup" : "login";
       } catch (err) {
-        if (err.status === 404) {
-          this.auth.step = "login";
-          this.errorMessage = "";
-          return;
-        }
         this.errorMessage = err.message;
       }
     },
@@ -228,9 +224,7 @@ createApp({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ phone: this.auth.phone, pin: this.auth.pin }),
         });
-        this.token = data.token;
         this.user = data.user;
-        localStorage.setItem("token", this.token);
         localStorage.setItem("user", JSON.stringify(this.user));
         await this.refreshAll();
         this.tab = "member-list";
@@ -244,9 +238,7 @@ createApp({
       } catch (_err) {
         void _err;
       }
-      this.token = "";
       this.user = null;
-      localStorage.removeItem("token");
       localStorage.removeItem("user");
       this.auth = { phone: "", pin: "", pinConfirm: "", step: "check" };
       this.successMessage = "";
@@ -270,7 +262,7 @@ createApp({
       }
     },
     async loadMembers() {
-      if (!this.token) return;
+      if (!this.user) return;
       const seasonQuery = this.selectedSeason ? `?season_label=${encodeURIComponent(this.selectedSeason)}` : "";
       this.members = await this.api(`/api/members${seasonQuery}`);
     },
@@ -289,7 +281,7 @@ createApp({
       this.auditLogs = data.audit_logs || [];
     },
     async onSeasonChange() {
-      if (!this.token) return;
+      if (!this.user) return;
       await this.loadDashboard();
       await this.loadMembers();
       await this.loadHistory();
@@ -297,7 +289,7 @@ createApp({
     },
     async refreshAll() {
       await this.loadConfig();
-      if (this.token) {
+      if (this.user) {
         await this.loadMemberStatuses();
         await this.loadAvailablePeriods();
         await this.loadDashboard();
@@ -385,7 +377,7 @@ createApp({
         previewWindow = window.open("", "_blank");
 
         const response = await fetch(this.attachmentUrl(filename), {
-          headers: { Authorization: `Bearer ${this.token}` },
+          credentials: "same-origin",
         });
 
         if (!response.ok) {
@@ -501,7 +493,7 @@ createApp({
       try {
         const seasonQuery = this.selectedSeason ? `?season_label=${encodeURIComponent(this.selectedSeason)}` : "";
         const res = await fetch(`/api/export${seasonQuery}`, {
-          headers: { Authorization: `Bearer ${this.token}` },
+          credentials: "same-origin",
         });
         if (!res.ok) {
           let message = "Export failed";
@@ -634,9 +626,13 @@ createApp({
   },
   async mounted() {
     await this.loadConfig();
-    if (this.token && this.user) {
-      await this.refreshAll();
-      this.tab = "member-list";
+    if (this.user) {
+      try {
+        await this.refreshAll();
+        this.tab = "member-list";
+      } catch (_err) {
+        void _err;
+      }
     }
   },
 }).mount("#app");

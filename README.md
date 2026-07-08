@@ -78,6 +78,8 @@ Prepared files in the repository:
 - `deploy/linux/systemd/biedribas-finansists.service`
 - `deploy/linux/nginx/biedribas-finansists.conf`
 - `deploy/linux/env.production.example`
+- `deploy/sql/20260708_add_performance_indexes.sql`
+- `deploy/sql/20260708_drop_performance_indexes.sql`
 
 1. Log in to the server and install required packages:
 
@@ -161,3 +163,76 @@ Prepared files in the repository:
 9. Verification:
 
    Open `http://......`.
+
+## PostgreSQL Index Migration
+
+When deploying to an existing PostgreSQL database, apply indexes from:
+
+- `deploy/sql/20260708_add_performance_indexes.sql`
+
+Run:
+
+```bash
+psql "$DATABASE_URL" -f deploy/sql/20260708_add_performance_indexes.sql
+```
+
+Rollback (if needed):
+
+```bash
+psql "$DATABASE_URL" -f deploy/sql/20260708_drop_performance_indexes.sql
+```
+
+Windows one-command helper:
+
+```powershell
+.\deploy\sql\run-index-migration.ps1 -EnvFile finan.env
+```
+
+Rollback with helper:
+
+```powershell
+.\deploy\sql\run-index-migration.ps1 -EnvFile finan.env -Rollback
+```
+
+If your `DATABASE_URL` does not include a password, pass it explicitly:
+
+```powershell
+$dbPassword = Read-Host "Enter DB password" -AsSecureString
+.\deploy\sql\run-index-migration.ps1 -EnvFile finan.env -DbPassword $dbPassword
+```
+
+Or prompt interactively for password (hidden SecureString input):
+
+```powershell
+.\deploy\sql\run-index-migration.ps1 -EnvFile finan.env -PromptForPassword
+```
+
+## Cookie Auth Rollout (Rollback-Safe)
+
+The backend currently accepts both:
+
+- `Authorization: Bearer ...` header tokens
+- HttpOnly auth cookie (`AUTH_COOKIE_NAME`)
+
+Recommended rollout:
+
+1. Deploy backend first (compat mode).
+2. Set cookie env vars in `/etc/biedribas-finansists.env`:
+   - `AUTH_COOKIE_NAME=auth_token`
+   - `AUTH_COOKIE_SAMESITE=Lax`
+   - `AUTH_COOKIE_SECURE=1` (required behind HTTPS)
+3. Restart service and verify login/logout in browser.
+4. Deploy frontend (cookie-based requests).
+5. Verify critical flows:
+   - login
+   - dashboard load
+   - expense attachment open
+   - export download
+6. Monitor logs for `401`/`429` spikes.
+
+Fast rollback plan:
+
+1. Roll frontend back to previous build.
+2. Keep backend in compat mode (still accepts bearer tokens).
+3. If HTTPS is temporarily unavailable, set `AUTH_COOKIE_SECURE=0`, restart, then restore to `1` once HTTPS is fixed.
+4. If index migration must be undone, run `deploy/sql/20260708_drop_performance_indexes.sql`.
