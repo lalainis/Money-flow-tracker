@@ -573,6 +573,7 @@ def test_login_sets_cookie_and_cookie_auth_works(client):
 
 
 def test_auth_init_rate_limit_per_phone(client):
+    # AUTH_INIT_RATE_PHONE is a Flask-Limiter rate string (for example, "10 per minute").
     limit_count = int(str(settings.AUTH_INIT_RATE_PHONE).split(" ", 1)[0])
 
     for _ in range(limit_count):
