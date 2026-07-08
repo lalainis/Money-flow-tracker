@@ -72,6 +72,12 @@ AUTH_LOCKOUT_MINUTES = max(1, int(os.getenv("AUTH_LOCKOUT_MINUTES", "15")))
 AUTH_COOKIE_NAME = os.getenv("AUTH_COOKIE_NAME", "auth_token")
 AUTH_COOKIE_SAMESITE = os.getenv("AUTH_COOKIE_SAMESITE", "Lax")
 AUTH_COOKIE_SECURE = _env_bool("AUTH_COOKIE_SECURE", default=IS_RENDER or IS_PRODUCTION)
+AUTH_INIT_RATE_IP = os.getenv("AUTH_INIT_RATE_IP", "30 per minute")
+AUTH_INIT_RATE_PHONE = os.getenv("AUTH_INIT_RATE_PHONE", "10 per minute")
+AUTH_SETUP_PIN_RATE_IP = os.getenv("AUTH_SETUP_PIN_RATE_IP", "15 per minute")
+AUTH_SETUP_PIN_RATE_PHONE = os.getenv("AUTH_SETUP_PIN_RATE_PHONE", "5 per minute")
+AUTH_LOGIN_RATE_IP = os.getenv("AUTH_LOGIN_RATE_IP", "20 per minute")
+AUTH_LOGIN_RATE_PHONE = os.getenv("AUTH_LOGIN_RATE_PHONE", "6 per minute")
 
 ROLES = {"cashier", "board", "auditor", "admin", "member"}
 EXPENSE_CATEGORIES = [

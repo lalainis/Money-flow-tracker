@@ -1,8 +1,9 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.exceptions import HTTPException
 
 from settings import (
 	CORS_ALLOWED_ORIGINS,
@@ -55,3 +56,8 @@ limiter = Limiter(
 )
 
 db = SQLAlchemy(app)
+
+
+@app.errorhandler(429)
+def handle_rate_limit(_error: HTTPException):
+	return jsonify({"error": "Too many requests. Please try again shortly."}), 429

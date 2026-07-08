@@ -7,7 +7,17 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from app_core import db, limiter
 from models import AuthToken, Member
-from settings import AUTH_LOCKOUT_MINUTES, AUTH_MAX_FAILED_ATTEMPTS, AUTH_TOKEN_TTL_HOURS
+from settings import (
+    AUTH_INIT_RATE_IP,
+    AUTH_INIT_RATE_PHONE,
+    AUTH_LOCKOUT_MINUTES,
+    AUTH_LOGIN_RATE_IP,
+    AUTH_LOGIN_RATE_PHONE,
+    AUTH_MAX_FAILED_ATTEMPTS,
+    AUTH_SETUP_PIN_RATE_IP,
+    AUTH_SETUP_PIN_RATE_PHONE,
+    AUTH_TOKEN_TTL_HOURS,
+)
 from settings import AUTH_COOKIE_NAME, AUTH_COOKIE_SAMESITE, AUTH_COOKIE_SECURE
 from services import (
     get_period_for_request,
@@ -30,8 +40,8 @@ def _phone_or_ip_key():
 
 
 @auth_bp.route("/api/auth/init", methods=["POST"])
-@limiter.limit("30 per minute")
-@limiter.limit("10 per minute", key_func=_phone_or_ip_key)
+@limiter.limit(AUTH_INIT_RATE_IP)
+@limiter.limit(AUTH_INIT_RATE_PHONE, key_func=_phone_or_ip_key)
 def auth_init():
     data = request.get_json() or {}
     phone = (data.get("phone") or "").strip()
@@ -47,8 +57,8 @@ def auth_init():
 
 
 @auth_bp.route("/api/auth/setup-pin", methods=["POST"])
-@limiter.limit("15 per minute")
-@limiter.limit("5 per minute", key_func=_phone_or_ip_key)
+@limiter.limit(AUTH_SETUP_PIN_RATE_IP)
+@limiter.limit(AUTH_SETUP_PIN_RATE_PHONE, key_func=_phone_or_ip_key)
 def setup_pin():
     data = request.get_json() or {}
     phone = (data.get("phone") or "").strip()
@@ -74,8 +84,8 @@ def setup_pin():
 
 
 @auth_bp.route("/api/auth/login", methods=["POST"])
-@limiter.limit("20 per minute")
-@limiter.limit("6 per minute", key_func=_phone_or_ip_key)
+@limiter.limit(AUTH_LOGIN_RATE_IP)
+@limiter.limit(AUTH_LOGIN_RATE_PHONE, key_func=_phone_or_ip_key)
 def login():
     data = request.get_json() or {}
     phone = (data.get("phone") or "").strip()
